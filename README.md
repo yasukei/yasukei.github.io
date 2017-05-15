@@ -35,3 +35,17 @@ Your Pages site will use the layout and styles from the Jekyll theme you have se
 ### Support or Contact
 
 Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+
+# my memo
+## prepare environment
+sudo apt install ruby-dev zlib1g-dev nodejs
+sudo gem install nokogiri
+sudo gem install jekyll bundler
+
+## Gemfile
+source 'https://rubygems.org'
+gem 'github-pages', group: :jekyll_plugins
+
+## exec
+bundle install
+bundle exec jekyll serve
