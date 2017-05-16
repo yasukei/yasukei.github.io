@@ -1,14 +1,21 @@
 ## Prepare & exec
-### Prepare environment
+### Prepare execution environment
+This below may be imcomplete.
+
 ```shell
 sudo apt install ruby-dev zlib1g-dev nodejs
 sudo gem install nokogiri
 sudo gem install jekyll bundler
 ```
 
-### Exec
+### Prepare project environment
+Execute below command with Gemfile.
 ```shell
 bundle install
+```
+
+### Exec
+```shell
 bundle exec jekyll serve
 ```
 
