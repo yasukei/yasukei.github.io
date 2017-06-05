@@ -27,7 +27,7 @@ Architect --> ArchitectureDescription : creates and owns
 Architect --> "1..n" Stakeholder : catches their concerns
 Stakeholder --> "1..n" Concerns : has
 System --> Architecture : has
-System --> Stakeholder : satisfies their needs
+System --> "1..n" Stakeholder : satisfies their needs
 @enduml
 
 custom_mark1
