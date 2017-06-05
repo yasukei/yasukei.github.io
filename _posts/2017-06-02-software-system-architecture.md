@@ -11,11 +11,11 @@ title: Software System Architecture, Working With Stakeholders Using Viewpoints 
 custom_mark1
 @startuml
 Architecture *-- ArchitecturalElement : consists of
+Architecture "1..n" *-- "1..n" RelationshipBetweenElements : consists of
+Architecture --> "0..n" ArchitecturalDescription : documentable
 ArchitecturalElement "2..n" <-- "1..n" RelationshipBetweenElements : relates
-Class03 *-- Class04
-Class05 o-- Class06
-Class07 .. Class08
-Class09 -- Class10
+System --> Architecture : has
+System --> Stakeholder : satisfies their needs
 @enduml
 
 custom_mark1
