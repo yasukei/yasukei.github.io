@@ -15,6 +15,10 @@ Architecture *-- ArchitectureElement : consists of
 Architecture "1..n" *-- "1..n" RelationshipBetweenElements : consists of
 Architecture --> "0..n" ArchitectureDescription : documentable
 ArchitectureDefinitionProcess --> "1..n" Architecture : derives definitions
+ArchitectureDescription --> "1..n" Stakeholder : documents architecture for
+Architect --> Architecture : designs
+Architect --> ArchitectureDefinitionProcess : obeys
+Architect --> ArchitectureDescription : creates and owns
 System --> Architecture : has
 System --> Stakeholder : satisfies their needs
 @enduml
