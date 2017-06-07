@@ -8,7 +8,7 @@ title: Software System Architecture, Working With Stakeholders Using Viewpoints 
 ![http://www.gravizo.com/ is unavailable.][figureX]
 <details> 
 <summary></summary>
-figureX_mark
+custom_mark1
 @startuml
 RelationshipBetweenElements "1..n" --> "2..n" ArchitectureElement : relates
 Architecture *-- ArchitectureElement : consists of
@@ -30,7 +30,7 @@ System --> Architecture : has
 System --> "1..n" Stakeholder : satisfies their needs
 @enduml
 
-figureX_mark
+custom_mark1
 </details>
 
-[figureX]: https://g.gravizo.com/source/svg/figureX_mark?https://raw.githubusercontent.com/yasukei/yasukei.github.io/master/_posts/2017-06-02-software-system-architecture.md
+[figureX]: https://g.gravizo.com/source/svg/custom_mark1?https://raw.githubusercontent.com/yasukei/yasukei.github.io/master/_posts/2017-06-02-software-system-architecture.md
