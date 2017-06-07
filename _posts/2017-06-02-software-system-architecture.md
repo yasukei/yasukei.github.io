@@ -5,10 +5,10 @@ title: Software System Architecture, Working With Stakeholders Using Viewpoints 
 
 [Book URL](https://books.google.co.jp/books?isbn=4797376724)
 
-![http://www.gravizo.com/ is unavailable.](https://g.gravizo.com/source/svg/custom_mark1?https://raw.githubusercontent.com/yasukei/yasukei.github.io/master/_posts/2017-06-02-software-system-architecture.md)
+![http://www.gravizo.com/ is unavailable.][figureX]
 <details> 
 <summary></summary>
-custom_mark1
+figureX_mark
 @startuml
 RelationshipBetweenElements "1..n" --> "2..n" ArchitectureElement : relates
 Architecture *-- ArchitectureElement : consists of
@@ -30,5 +30,7 @@ System --> Architecture : has
 System --> "1..n" Stakeholder : satisfies their needs
 @enduml
 
-custom_mark1
+figureX_mark
 </details>
+
+[figureX]: https://g.gravizo.com/source/svg/figureX_mark?https://raw.githubusercontent.com/yasukei/yasukei.github.io/master/_posts/2017-06-02-software-system-architecture.md
