@@ -1,4 +1,4 @@
-[yasukei.github.io](https://yasukei.github.io/)
+goto: https://yasukei.github.io/
 
 ## Prepare & exec
 ### Prepare execution environment
@@ -30,22 +30,7 @@ bundle exec jekyll serve
 * [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
 
 ## Markdown example
+https://github.com/yasukei/yasukei.github.io/blob/master/_posts/2017-10-03-markdown.md
 
-```markdown
-Syntax highlighted code block
 
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
 
