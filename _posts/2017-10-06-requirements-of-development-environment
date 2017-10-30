@@ -15,6 +15,9 @@ astyle
 Split window
 
 Lint
+splint
+cppcheck
+build-scan by clang
 
 Compile
 
