@@ -3,22 +3,13 @@
 layout: home
 
 hero:
-  name: "Yasukei's Wiki"
-  text: "My Personal Wiki"
-  tagline: My personal knowledge base
+  name: "yasukei.github.io"
+  text: My notes, tools, ...
   actions:
     - theme: brand
-      text: Markdown Examples
-      link: /markdown-examples
+      text: Notes
+      link: /notes
     - theme: alt
-      text: API Examples
-      link: /api-examples
-
-features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+      text: Tools
+      link: /tools
 ---
