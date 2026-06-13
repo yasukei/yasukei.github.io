@@ -1,4 +1,4 @@
-# Git Cheat Sheet
+# Git
 
 ## 1. Setup & Configuration
 
