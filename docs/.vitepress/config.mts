@@ -59,17 +59,25 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Notes', link: '/notes' }
+      { text: 'Notes', link: '/notes' },
+      { text: 'Tools', link: '/tools' }
     ],
 
     sidebar: [
       {
         text: 'Notes',
+        link: '/notes/',
         items: [
-          { text: 'Introduction', link: '/notes/' },
           ...generateSidebarItems(path.join(process.cwd(), 'docs/notes'))
         ]
       },
+      {
+        text: 'Tools',
+        link: '/tools/',
+        items: [
+          ...generateSidebarItems(path.join(process.cwd(), 'docs/tools'))
+        ]
+      }
     ],
 
     socialLinks: [
