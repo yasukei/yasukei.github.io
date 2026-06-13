@@ -82,6 +82,13 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/yasukei/yasukei.github.io' }
-    ]
-  }
+    ],
+    lastUpdated: {
+      text: 'Updated at',
+      formatOptions: {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }
+    }
+  },
 })
