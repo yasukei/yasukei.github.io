@@ -20,30 +20,30 @@ When setting up a **Fine-grained personal access token**, ignore "Account permis
 
 ### 1. Code & Deployment (The Essentials)
 
-- **Contents: `Read and Write**`
+- **Contents:** `Read and Write`
 - *Why:* This is the core permission. It allows the agent to pull down code, create or switch to feature branches, modify code files, and push commits back to your repository.
 
 
-* **Commit statuses: `Read and Write**`
+* **Commit statuses:** `Read and Write`
 * *Why:* Allows the agent to see if CI/CD pipelines or automated test runners passed or failed on a commit, letting it know if its fix broke the build.
 
 
-* **Workflows: `Read and Write**`
+* **Workflows:** `Read and Write`
 * *Why:* If `agy` is debugging or creating GitHub Actions (`.github/workflows/`), it needs this to edit, update, or trigger workflow files.
 
 
 
 ### 2. Collaboration & Workflow (The Developer Tools)
 
-* **Pull Requests: `Read and Write**`
+* **Pull Requests:** `Read and Write`
 * *Why:* Essential for an AI developer. It allows `agy` to open pull requests for you, read feedback on existing PRs, and add comments or request reviews.
 
 
-* **Issues: `Read and Write**`
+* **Issues:** `Read and Write`
 * *Why:* Allows the agent to read issues assigned to it, check backlogs, add status updates, or close issues when fixed.
 
 
-* **Metadata: `Read-only**`
+* **Metadata:** `Read-only`
 * *Why:* Automatically set to Read-only by GitHub. This lets the agent read basic repository structure data.
 
 
