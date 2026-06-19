@@ -4,7 +4,7 @@ Markdown is a lightweight markup language that uses plain text formatting syntax
 
 ---
 
-### 📝 Headings
+## 📝 Headings
 
 To create a heading, add one to six `#` symbols before your heading text. The number of `#` you use determines the size and level of the heading.
 
@@ -20,7 +20,7 @@ To create a heading, add one to six `#` symbols before your heading text. The nu
 
 ---
 
-### 🎨 Text Styling
+## 🎨 Text Styling
 
 | Style | Syntax |
 | --- | --- |
@@ -31,9 +31,9 @@ To create a heading, add one to six `#` symbols before your heading text. The nu
 
 ---
 
-### 📑 Lists
+## 📑 Lists
 
-#### Unordered (Bulleted) Lists
+### Unordered (Bulleted) Lists
 
 You can use `*`, `-`, or `+` interchangeably. Indent two spaces to create a nested list item.
 
@@ -46,7 +46,7 @@ You can use `*`, `-`, or `+` interchangeably. Indent two spaces to create a nest
 
 ```
 
-#### Ordered (Numbered) Lists
+### Ordered (Numbered) Lists
 
 Simply start each line with a number followed by a period. The actual numbers you use don't matter; Markdown will sequence them automatically when rendered.
 
@@ -57,7 +57,7 @@ Simply start each line with a number followed by a period. The actual numbers yo
 
 ```
 
-#### Task Lists
+### Task Lists
 
 Great for keeping track of to-do items. Use `[ ]` for unchecked tasks and `[x]` for checked ones.
 
@@ -69,9 +69,9 @@ Great for keeping track of to-do items. Use `[ ]` for unchecked tasks and `[x]` 
 ```
 
 
-### 🔗 Links and Images
+## 🔗 Links and Images
 
-#### Links
+### Links
 
 Format the clickable text in brackets `[ ]` and place the URL immediately after in parentheses `( )`.
 
@@ -82,7 +82,7 @@ Format the clickable text in brackets `[ ]` and place the URL immediately after 
 
 [Visit GitHub](https://github.com)
 
-#### Images
+### Images
 
 Images follow the exact same format as links, but with an exclamation mark `!` right at the front.
 
@@ -93,9 +93,9 @@ Images follow the exact same format as links, but with an exclamation mark `!` r
 
 ---
 
-### 💬 Blockquotes and Horizontal Rules
+## 💬 Blockquotes and Horizontal Rules
 
-#### Blockquotes
+### Blockquotes
 
 Use the `>` symbol to pull out a block of text—perfect for quotes, callouts, or notes.
 
@@ -106,7 +106,7 @@ Use the `>` symbol to pull out a block of text—perfect for quotes, callouts, o
 
 > "Simplicity is the soul of efficiency." — Austin Freeman
 
-#### Horizontal Rules
+### Horizontal Rules
 
 Create a clean divider line by typing three or more hyphens `---` or asterisks `***` on a line by themselves.
 
@@ -117,9 +117,9 @@ Create a clean divider line by typing three or more hyphens `---` or asterisks `
 
 ---
 
-### 💻 Code Formatting
+## 💻 Code Formatting
 
-#### Inline Code
+### Inline Code
 
 Wrap small snippets or variable names within backticks ```.
 
@@ -130,12 +130,12 @@ Use the `console.log()` function to debug your code.
 
 Use the `console.log()` function to debug your code.
 
-#### Code Blocks
+### Code Blocks
 
 For multiple lines of code, wrap them in triple backticks `````. You can optionally specify the programming language next to the first set of backticks to enable syntax highlighting.
 
 
-### 📊 Tables
+## 📊 Tables
 
 Use pipes `|` to separate columns and hyphens `-` to create headers. You can add colons `:` to the hyphen line to change text alignment.
 
