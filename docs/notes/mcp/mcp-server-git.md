@@ -1,4 +1,4 @@
-# github-mcp-server
+# mcp-server-git
 
 https://github.com/modelcontextprotocol/servers/tree/main/src/git
 
