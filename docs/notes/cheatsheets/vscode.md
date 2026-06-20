@@ -1,9 +1,9 @@
-## VS Code Keyboard Shortcuts (Windows & Linux)
+# VS Code Keyboard Shortcuts (Windows & Linux)
 
 This cheatsheet covers the essential, productivity-boosting shortcuts for Visual Studio Code on Windows and Linux.
 
 
-### 🔍 General & Interface
+## 🔍 General & Interface
 
 | Shortcut | Action |
 | --- | --- |
@@ -16,7 +16,7 @@ This cheatsheet covers the essential, productivity-boosting shortcuts for Visual
 | **Ctrl + ,** (Comma) | Open User Settings |
 
 
-### 📝 Editing & Text Manipulation
+## 📝 Editing & Text Manipulation
 
 | Shortcut | Action |
 | --- | --- |
@@ -31,7 +31,7 @@ This cheatsheet covers the essential, productivity-boosting shortcuts for Visual
 | **Shift + Alt + A** | Toggle block comment |
 
 
-### 🎯 Multi-Cursor & Selection
+## 🎯 Multi-Cursor & Selection
 
 Multi-cursors let you edit multiple places in a file simultaneously.
 
@@ -45,7 +45,7 @@ Multi-cursors let you edit multiple places in a file simultaneously.
 | **Ctrl + L** | Select current line |
 
 
-### 🧭 Navigation
+## 🧭 Navigation
 
 | Shortcut | Action |
 | --- | --- |
@@ -57,7 +57,7 @@ Multi-cursors let you edit multiple places in a file simultaneously.
 | **Alt + ← / →** | Go back / forward in your navigation history |
 
 
-### 🗂️ Window & Editor Management
+## 🗂️ Window & Editor Management
 
 | Shortcut | Action |
 | --- | --- |
@@ -71,7 +71,7 @@ Multi-cursors let you edit multiple places in a file simultaneously.
 | **Ctrl + Tab** | Switch to the next most recently used open file |
 
 
-### 💻 Integrated Terminal
+## 💻 Integrated Terminal
 
 | Shortcut | Action |
 | --- | --- |

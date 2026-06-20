@@ -1,9 +1,9 @@
-## Ubuntu Default Keyboard Shortcuts Cheatsheet
+# Ubuntu
 
 Whether you are navigating the desktop, managing windows, or tearing it up in the terminal, these default keyboard shortcuts will help you fly through your workflow.
 
 
-### 🚀 System & Launchers
+## 🚀 System & Launchers
 
 | Shortcut | Action |
 | --- | --- |
@@ -16,7 +16,7 @@ Whether you are navigating the desktop, managing windows, or tearing it up in th
 | **Ctrl + Alt + Del** | Bring up the Power Off / Restart dialog |
 
 
-### 🪟 Window Management
+## 🪟 Window Management
 
 | Shortcut | Action |
 | --- | --- |
@@ -31,7 +31,7 @@ Whether you are navigating the desktop, managing windows, or tearing it up in th
 | **Alt + F7** | Move the current window (using arrow keys) |
 
 
-### 💻 Workspaces (Virtual Desktops)
+## 💻 Workspaces (Virtual Desktops)
 
 | Shortcut | Action |
 | --- | --- |
@@ -41,7 +41,7 @@ Whether you are navigating the desktop, managing windows, or tearing it up in th
 | **Super + Shift + Page Down** | Move the active window to the workspace below |
 
 
-### 📸 Screenshots & Screen Recording
+## 📸 Screenshots & Screen Recording
 
 Ubuntu utilizes a built-in, interactive screenshot tool.
 
@@ -52,7 +52,7 @@ Ubuntu utilizes a built-in, interactive screenshot tool.
 | **Shift + Print Screen** | Take a screenshot of the entire screen immediately |
 
 
-### ⌨️ Terminal Essentials
+## ⌨️ Terminal Essentials
 
 These are standard terminal shortcuts that save massive amounts of time when working on the command line.
 
