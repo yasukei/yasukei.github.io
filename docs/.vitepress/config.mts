@@ -34,9 +34,14 @@ function generateSidebarItems(dirPath: string, relativePath: string = '/notes/')
     if (stat.isDirectory()) {
       const categoryName = file.charAt(0).toUpperCase() + file.slice(1).replace(/[-_]/g, ' ')
       const subItems = generateSidebarItems(fullPath, `${relativePath}${file}/`)
+      const categoryLink = fs.existsSync(path.join(fullPath, 'index.md'))
+        ? `${relativePath}${file}/`
+        : undefined
+
       if (subItems.length > 0) {
         items.push({
           text: categoryName,
+          link: categoryLink,
           collapsed: false,
           items: subItems
         })
