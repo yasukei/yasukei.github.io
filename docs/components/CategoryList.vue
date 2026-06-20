@@ -8,15 +8,17 @@ const props = defineProps<{
 
 const processedCategories = computed(() => {
   const groups = groupByCategory(props.items)
-  return Object.entries(groups).map(([category, pages]) => {
-    const indexPage = pages.find(p => p.url.endsWith('/index.html') || p.url.endsWith('/'))
-    const childPages = pages.filter(p => p !== indexPage)
-    return {
-      name: category,
-      indexUrl: indexPage ? indexPage.url : null,
-      pages: childPages
-    }
-  })
+  return Object.entries(groups)
+    .map(([category, pages]) => {
+      const indexPage = pages.find(p => p.url.endsWith('/index.html') || p.url.endsWith('/'))
+      const childPages = pages.filter(p => p !== indexPage)
+      return {
+        name: category,
+        indexUrl: indexPage ? indexPage.url : null,
+        pages: childPages
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
 })
 </script>
 
