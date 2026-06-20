@@ -1,4 +1,4 @@
-# About Jules AI Coding Agent
+# Jules
 
 This document serves as a summary of Jules’s architecture, workflows, limits, and best practices based on operational usage.
 
