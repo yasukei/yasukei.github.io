@@ -1,4 +1,4 @@
-# Fish Shell
+# fish
 
 ::: v-pre
 
