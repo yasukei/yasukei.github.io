@@ -1,4 +1,4 @@
-# VS Code Keyboard Shortcuts (Windows & Linux)
+# VS Code
 
 This cheatsheet covers the essential, productivity-boosting shortcuts for Visual Studio Code on Windows and Linux.
 
