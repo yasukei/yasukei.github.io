@@ -107,3 +107,32 @@ brew cleanup
 # Show where Homebrew is installed and its current environment variables
 brew shellenv
 ```
+
+---
+
+## 5. Backup & Restore (Brewfile)
+
+Homebrew Bundler allows you to share, backup, or restore your entire package setup using a single `Brewfile`.
+
+### Dumping (Backing up) your current setup
+
+```bash
+# Export all installed formulae, casks, taps, and apps to a Brewfile
+# --force will overwrite any existing Brewfile, and --file specifies the output path
+brew bundle dump --force --file=~/Brewfile
+```
+
+### Installing (Restoring) from a Brewfile
+
+```bash
+# Install all packages listed in a Brewfile
+brew bundle install --file=~/Brewfile
+
+# Check if there are any missing dependencies listed in the Brewfile
+brew bundle check --file=~/Brewfile
+
+# Uninstall any packages not listed in the Brewfile
+# (Caution: this cleans up your environment to match the Brewfile exactly)
+brew bundle cleanup --force --file=~/Brewfile
+```
+
