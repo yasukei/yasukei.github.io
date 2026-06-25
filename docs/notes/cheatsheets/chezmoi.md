@@ -1,4 +1,4 @@
-# Chezmoi
+# chezmoi
 
 [chezmoi](https://www.chezmoi.io/) is a fast, secure, and cross-platform dotfile manager. It helps you manage your personal configuration files (dotfiles) across multiple diverse machines.
 

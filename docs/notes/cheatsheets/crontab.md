@@ -1,10 +1,10 @@
-# Crontab
+# crontab
 
 [crontab](https://en.wikipedia.org/wiki/Cron) (cron table) is a configuration file that specifies shell commands to run periodically on a scheduled time. The system's cron daemon runs in the background and constantly checks the crontab files to execute jobs.
 
 ---
 
-## 1. Crontab Commands
+## 1. crontab Commands
 
 Use the `crontab` utility to manage your cron jobs.
 
@@ -120,7 +120,7 @@ Here are common schedules used in production:
 
 ---
 
-## 5. Crontab Environment Variables
+## 5. crontab Environment Variables
 
 You can define environment variables at the top of your crontab file to customize how tasks execute.
 
