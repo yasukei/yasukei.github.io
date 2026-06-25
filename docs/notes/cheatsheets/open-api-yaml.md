@@ -143,7 +143,42 @@ components:
 
 ---
 
-## 5. Common Data Types & Formats
+## 5. Schema Composition (allOf)
+
+Use `allOf` to combine multiple schemas into one (composition/inheritance). This allows you to extend base schemas with additional properties without duplicating them.
+
+```yaml
+components:
+  schemas:
+    # Base Schema
+    User:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    # Extended Schema (inherits properties from User)
+    EmployeeUser:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required:
+            - employeeId
+          properties:
+            employeeId:
+              type: string
+            department:
+              type: string
+```
+
+---
+
+## 6. Common Data Types & Formats
 
 | Type | Format / Options | Example |
 | --- | --- | --- |
@@ -170,7 +205,7 @@ items:
 
 ---
 
-## 6. Authentication & Security
+## 7. Authentication & Security
 
 Define the strategy in `components.securitySchemes`, then apply it globally or per-route.
 
