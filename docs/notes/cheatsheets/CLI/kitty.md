@@ -110,7 +110,48 @@ Configuration is stored in plain text and can be reloaded instantly without rest
 
 ---
 
-## 8. Extensibility: Kittens
+## 8. Managing Color Schemes (Themes)
+
+You can customize the color palette and background of the terminal through configuration files or built-in utilities.
+
+### 1. Interactive Theme Selector
+Kitty comes with a built-in theme manager that allows you to preview and select from 300+ pre-installed themes.
+
+```bash
+# Launch the interactive theme browser
+kitty +kitten themes
+```
+* Use arrow keys to scroll and preview, `Enter` to select and save, or `q` to exit.
+* Selecting a theme will automatically update your `kitty.conf`.
+
+### 2. Switch Theme Non-Interactively
+To change the theme instantly via command line or scripts, specify the theme name:
+
+```bash
+# Switch to Dimmed Monokai theme immediately in all running instances
+kitty +kitten themes --reload-in=all "Dimmed Monokai"
+```
+
+### 3. Manual Customization in `kitty.conf`
+Specify individual colors directly inside your `~/.config/kitty/kitty.conf` file:
+
+```ini
+# Main Colors
+foreground            #dcdccc
+background            #1f1f1f
+selection_foreground  #000000
+selection_background  #f0e68c
+
+# Terminal Colors (ANSI colors)
+color0  #3f3f3f
+color8  #5f5f5f
+color1  #705050
+color9  #dca3a3
+```
+
+---
+
+## 9. Extensibility: Kittens
 
 Kittens are python scripts that run inside kitty to add advanced UI helpers.
 
