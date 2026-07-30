@@ -186,6 +186,9 @@ docker compose up -d
 # Rebuild images before starting
 docker compose up -d --build
 
+# Stop running services without removing containers, networks, or volumes
+docker compose stop
+
 # Stop and remove containers, networks created by `up`
 docker compose down
 
