@@ -55,7 +55,7 @@ When setting up a **Fine-grained personal access token**, ignore "Account permis
 To safely sandbox your agent, **leave these at "No Access"** so a rogue prompt or hallucination can't compromise your settings:
 
 * **Administration:** `No Access` (The agent should never be able to delete the repository, change visibility from private to public, or manage branch protection rules).
-* **Secrets / Dependabot Secrets:** `No Access` (Never allow the agent to read production environment secrets, API tokens, or encryption keys stored in repo settings).
+* **Secrets** and **Dependabot secrets:** `No Access` (Never allow the agent to read production environment secrets, API tokens, or encryption keys stored in repo settings).
 * **Webhooks:** `No Access` (Prevents the agent from creating external network listeners or triggers).
 
 ---
