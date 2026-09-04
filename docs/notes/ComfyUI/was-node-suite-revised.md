@@ -98,8 +98,8 @@ Compile and export animations.
 ### 5. Workflow Organization
 Keep your node graph clean.
 
-*   **WAS Bus**:
-    *   **Usage**: Bundles standard wires (`MODEL`, `CLIP`, `VAE`, `LATENT`, `IMAGE`, `MASK`, `TEXT`) into a single connection.
+*   **Bus Node**:
+    *   **Usage**: Bundles `MODEL`, `CLIP`, `VAE`, and positive/negative `CONDITIONING` into a single connection.
     *   **Why use it**: Dramatically reduces spaghetti wires in complex workflows by routing all core data streams through a single "Bus" wire.
 
 ---
