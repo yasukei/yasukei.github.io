@@ -40,7 +40,7 @@ Splits let you divide a single tab into multiple, simultaneous terminal viewport
 * **Split Vertically (Side-by-Side):** `Ctrl` + `F2`
 * **Split Horizontally (Top/Bottom):** `Shift` + `F2`
 * **Move Focus Between Splits:** `Shift` + `Arrow Keys` (Up/Down/Left/Right)
-* **Resize a Split:** `Ctrl` + `Shift` + `Arrow Keys`
+* **Resize a Split:** `Alt` + `Shift` + `Arrow Keys`
 * **Zoom/Maximize Current Split:** `Shift` + `F11` *(Press again to minimize back into place)*
 * **Toggle Split Layouts:** `Shift` + `F8` *(Cycles through preset grid layouts)*
 * **Close Current Split:** `Ctrl` + `d` (or type `exit`)
@@ -73,5 +73,5 @@ To paste what you just copied into any active Byobu prompt, use **`Alt` + `Inser
 
 * **Open Configuration Menu:** `F9` *(Allows you to toggle status bar notifications like CPU, RAM, IP address, and change escape keys).*
 * **View Keyboard Shortcuts:** `Shift` + `F1` *(Opens the built-in quick reference help sheet).*
-* **Reload Configuration:** `Ctrl` + `pagedown` *(Useful if you manually edited your `.byobu/` config files).*
+* **Reload Configuration:** `F5` *(Useful if you manually edited your `.byobu/` config files).*
 
