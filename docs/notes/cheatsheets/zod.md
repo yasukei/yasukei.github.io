@@ -54,20 +54,21 @@ z.string().max(5);
 z.string().min(5);
 z.string().length(5);
 
-z.string().email();
-z.string().url();
-z.string().emoji();
-z.string().uuid();
-z.string().cuid();
-z.string().cuid2();
-z.string().ulid();
+// v4: use top-level functions instead of the old chained .email()/.url()/etc.
+z.email();
+z.url();
+z.emoji();
+z.uuid();
+z.cuid();
+z.cuid2();
+z.ulid();
 
 z.string().regex(/^[a-z]+$/);
 z.string().includes("tuna");
 z.string().startsWith("https://");
 z.string().endsWith(".com");
-z.string().datetime(); // ISO 8601
-z.string().ip(); // defaults to IPv4 and IPv6
+z.iso.datetime(); // ISO 8601
+z.ipv4(); // or z.ipv6()
 
 ```
 
@@ -128,15 +129,15 @@ User.strict();      // Fail if unknown keys are present
 User.strip();       // Remove unknown keys (default behavior)
 
 // Object Methods
-const PartialUser = User.partial(); // Deep partial by default
+const PartialUser = User.partial(); // Shallow only; top-level keys become optional
 const RequiredUser = User.required();
 
 const NameOnly = User.pick({ username: true });
 const AgeOnly = User.omit({ username: true });
 
-// Combine objects
+// Combine objects (use .extend() for both; .merge() is deprecated in v4)
 const Admin = User.extend({ role: z.literal("ADMIN") });
-const Merged = User.merge(z.object({ email: z.string() }));
+const Merged = User.extend(z.object({ email: z.string() }).shape);
 
 ```
 
@@ -171,9 +172,9 @@ FishEnum.parse("Salmon"); // => "Salmon"
 // Extract values
 FishEnum.options; // ["Salmon", "Tuna", "Trout"]
 
-// Native TypeScript Enums
+// Native TypeScript Enums (z.enum() accepts these directly since v4; z.nativeEnum() is deprecated)
 enum Fruits { Apple, Banana }
-const FruitEnum = z.nativeEnum(Fruits);
+const FruitEnum = z.enum(Fruits);
 
 ```
 
@@ -206,7 +207,8 @@ const EmployedPerson = z.intersection(Person, Employee);
 
 ```typescript
 // Record: object with unknown keys but specific value types
-z.record(z.number()); // Record<string, number>
+// v4 requires an explicit key schema (single-arg form was removed)
+z.record(z.string(), z.number()); // Record<string, number>
 z.record(z.string().min(1), z.number()); // Record with key validation
 
 // Tuple: fixed length array
