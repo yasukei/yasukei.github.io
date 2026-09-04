@@ -30,7 +30,7 @@ Add the initialization script to your shell's rc file:
   ```
 * **Zsh** (add to `~/.zshrc`):
   ```bash
-  eval "$(fzf --zsh)"
+  source <(fzf --zsh)
   ```
 * **Fish** (add to `~/.config/fish/config.fish`):
   ```fish
