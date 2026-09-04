@@ -9,9 +9,9 @@ This document serves as a summary of Jules’s architecture, workflows, limits, 
 
 ## ⚙️ Execution, Limits & Quotas
 * **The Subscription Quota:** Limits are counted per task (1 task = 1 unique conversation session/thread or GitHub Issue), not per chat message. Inside a running session, you can send multiple messages to guide Jules. Depending on your tier (Free, AI Pro, AI Ultra), you have different daily task and concurrency limits.
-* **Model Capabilities:** Jules is natively powered by Google's Gemini Pro (e.g., Gemini 2.5 Pro / 3 Pro). You do not need to manually toggle or select models; Jules automatically leverages its underlying architecture to handle both deep reasoning and low-level code generation tasks efficiently.
+* **Model Capabilities:** Jules is powered by Google's Gemini models. Gemini 3 Flash is the default model across all tiers, with Gemini 3 Pro selectable for tasks that need deeper reasoning.
 * **Concurrency:** Highly asynchronous. You can spin up multiple parallel conversation sessions on the same repository concurrently (each gets its own fresh cloud VM sandbox). The free tier typically allows up to 3 parallel tasks.
-* **Timeouts:** Tasks have built-in execution limits. For example, there is typically a 15-minute execution time limit per active task run to prevent infinite loops during failing test cycles. If it times out, it allows you to commit the work-in-progress (WIP).
+* **Timeouts:** Jules is metered by task count/concurrency rather than a fixed per-task time limit; long-running tasks (40+ minutes) are possible. If a task does get cut short, it allows you to commit the work-in-progress (WIP).
 
 ---
 
