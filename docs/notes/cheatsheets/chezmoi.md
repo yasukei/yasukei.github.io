@@ -16,7 +16,7 @@ brew install chezmoi
 sudo apt install chezmoi
 
 # Binary installation script (installs to ./bin)
-sh -c "$(curl -fsLS https://chezmoi.io/get)"
+sh -c "$(curl -fsLS get.chezmoi.io)"
 ```
 
 ---
