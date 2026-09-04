@@ -13,7 +13,7 @@ Whether you are navigating the desktop, managing windows, or tearing it up in th
 | **Ctrl + Alt + T** | Open a new **Terminal** window |
 | **Super + L** | Lock the screen |
 | **Super + V** | Open the Notification/Calendar menu |
-| **Ctrl + Alt + Del** | Bring up the Power Off / Restart dialog |
+| **Ctrl + Alt + Del** | Bring up the Log Out confirmation dialog |
 
 
 ## 🪟 Window Management
