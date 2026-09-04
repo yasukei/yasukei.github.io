@@ -100,12 +100,12 @@ Configuration is stored in plain text and can be reloaded instantly without rest
 * **Global Default**: `/etc/xdg/kitty/kitty.conf`
 
 > [!TIP]
-> Run `kitty --config-file` or press `kitty_mod + f2` to open your active configuration file directly.
+> Press `kitty_mod + f2` to open your active configuration file directly in your editor.
 
 ### Reloading & Debugging
 * **Reload configuration**: `kitty_mod` + `f5`
 * **Toggle Fullscreen**: `kitty_mod` + `f11`
-* **Open Kitty Command Palette**: `kitty_mod` + `f1` (search bindings and config commands)
+* **Open Kitty Command Palette**: `kitty_mod` + `f3` (search bindings and config commands)
 * **Open Kitty Shell**: `kitty_mod` + `Escape`
 
 ---
