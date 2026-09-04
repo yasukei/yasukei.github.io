@@ -12,7 +12,7 @@ The **Friendly Interactive Shell (fish)** is a smart and user-friendly command-l
 
 ```bash
 # Add official PPA for the latest version
-sudo apt-add-repository ppa:fish-shell/release-3
+sudo apt-add-repository ppa:fish-shell/release-4
 sudo apt update
 sudo apt install fish -y
 ```
