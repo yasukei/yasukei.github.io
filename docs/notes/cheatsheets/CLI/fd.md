@@ -159,7 +159,6 @@ When using `-x` or `-X`, you can format file paths using placeholders.
 | `{/}` | Basename (filename only) | `math.js` |
 | `{/.}` | Basename without the extension | `math` |
 | `{//}` | Parent directory path | `src/utils` |
-| `{.}` | Absolute path (with `--absolute-path`) | `/absolute/path/src/utils/math.js` |
 
 ---
 
