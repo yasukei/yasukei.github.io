@@ -60,7 +60,7 @@ Customize which files are displayed and how they are ordered.
 | **Show All** | `-a`, `--all` | Show hidden and dotfiles. Pass twice (`-aa`) to also show `.` and `..`. |
 | **Directories Only** | `-D`, `--only-dirs` | List only directories. |
 | **Files Only** | `-f`, `--only-files` | List only files. |
-| **List Directory Entry** | `-d`, `--list-dirs` | List directory names, not their contents. |
+| **List Directory Entry** | `-d`, `--treat-dirs-as-files` | Treat directories as regular files, listing the entry itself rather than its contents. |
 | **Group Directories First** | `--group-directories-first` | Show directories at the top of the list. |
 | **Reverse Order** | `-r`, `--reverse` | Reverses the sorting order. |
 | **Ignore Git Files** | `--git-ignore` | Skip files specified in `.gitignore`. |
