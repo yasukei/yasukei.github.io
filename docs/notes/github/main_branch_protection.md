@@ -12,7 +12,7 @@
 
 ## 2. Core Protections (Prevent Overwrites)
 * **[x] Restrict deletions:** Prevents anyone from deleting the `main` branch.
-* **[x] Restrict force pushes:** Prevents rewriting commit history. All fixes must be made via new commits or git reverts.
+* **[x] Block force pushes:** Prevents rewriting commit history. All fixes must be made via new commits or git reverts.
 * **[x] Require linear history:** Forces a clean, straight git graph by requiring developers to use **Squash and Merge** or **Rebase and Merge** (blocks standard merge commits).
 
 ## 3. Pull Request & Review Gatekeeping
@@ -25,7 +25,7 @@
 * **[x] Require status checks to pass before merging:**
     * Add specific CI pipelines (e.g., GitHub Actions testing, linting, or VitePress `npm run docs:build` verification).
 * **[x] Require branches to be up to date before merging:** Forces developers to test their local branch against the absolute latest commit on `main` before the merge button becomes active.
-* **[x] Require conversation resolution before merging:** Blocks merging if there are unresolved comments or active discussions on the PR.
+* **[x] Require all comments on the pull request to be resolved:** Blocks merging if there are unresolved comments or active discussions on the PR.
 
 ---
 
@@ -34,7 +34,7 @@ Unlike legacy rules, rulesets require an explicit list of who can bypass these r
 
 * **Bypass List Configuration:**
     * **Role:** Repository Admin (or a specific Dev-Ops Team)
-    * **Bypass Mode:** Always
+    * **Bypass Mode:** Always allow (or "For pull requests only" for a stricter setup)
 
 ---
 
