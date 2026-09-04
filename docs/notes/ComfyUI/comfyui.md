@@ -72,8 +72,7 @@ Here are useful startup arguments:
 | `--listen` | Listen on all network interfaces (allows access from other devices on local network) |
 | `--port 8188` | Set the port (default is `8188`) |
 | `--enable-manager` | Enable the ComfyUI-Manager extension |
-| `--highvram` / `--lowvram` | Force high/low VRAM mode (auto-detected by default) |
-| `--novelty-sdxl-bypass` | Save VRAM on SDXL load |
+| `--highvram` / `--lowvram` / `--novram` | Force high/low/no VRAM mode (auto-detected by default) |
 | `--use-pytorch-cross-attention` | Use PyTorch cross-attention (often faster on newer GPUs) |
 | `--preview-method auto` | Enable previewing latent images while generating |
 | `--disable-smart-memory` | Disable smart VRAM management (useful if encountering OOM crashes) |
@@ -101,7 +100,7 @@ These shortcuts are essential for efficient node editing and workflow design.
 | **Space + Drag** / **Right-Click + Drag** | Pan/scroll the workspace |
 | **Scroll Wheel** / **Pinch Zoom** | Zoom in / out |
 | **Ctrl + 0** | Reset zoom to 100% |
-| **Shift + Double Click** | Collapse / Expand selected node |
+| **Alt + C** | Collapse / Expand selected node |
 
 ### Node Editing & Creation
 | Shortcut | Action |
@@ -158,7 +157,7 @@ Put your downloaded models in these directories under the ComfyUI root:
 
 ## 🛠️ ComfyUI Manager & Custom Nodes
 
-[ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) is an essential custom node to install, update, and manage other custom nodes/models.
+[ComfyUI-Manager](https://github.com/Comfy-Org/ComfyUI-Manager) is an essential custom node to install, update, and manage other custom nodes/models.
 
 ### 1. Install ComfyUI-Manager
 Install the manager dependencies using `uv`:
@@ -188,7 +187,7 @@ uv pip install -r requirements.txt
 
 ### 1. Out of VRAM (OOM) Errors
 If you run out of GPU memory:
-- Add `--lowvram` or `--medvram` to your startup command.
+- Add `--lowvram` or `--novram` to your startup command.
 - Set `--preview-method none` to disable real-time VRAM-intensive generation previews.
 
 ### 2. CUDA/PyTorch Version Mismatch
