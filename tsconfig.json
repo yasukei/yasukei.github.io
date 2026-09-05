@@ -16,7 +16,9 @@
   "include": [
     "docs/**/*.ts",
     "docs/**/*.mts",
-    "docs/**/*.vue"
+    "docs/**/*.vue",
+    "test/**/*.ts",
+    "vitest.config.ts"
   ],
   "exclude": [
     "node_modules",

@@ -8,6 +8,8 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "dev": "npm run docs:dev",
     "build": "npm run docs:build"
   },
@@ -26,6 +28,7 @@
   "devDependencies": {
     "typescript": "^5.9.3",
     "vitepress": "^1.0.0",
+    "vitest": "^5.0.0",
     "vue": "^3.4.0",
     "vue-tsc": "^3.3.11"
   },
