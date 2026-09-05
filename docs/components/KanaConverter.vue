@@ -42,7 +42,13 @@ async function copy(kind: Pane) {
       if (copied.value === kind) copied.value = ''
     }, 1200)
   } catch {
-    // Clipboard access can be denied; nothing useful to do here.
+    // Clipboard access can be denied; there is nothing useful to do about it,
+    // so the button simply never confirms.
+    //
+    // Reaching this line is untested: Vitest's mock attaches its own handler
+    // to the promise it returns, so a rejection here cannot be observed from a
+    // test. If you are debugging a denied clipboard, this is the line you are
+    // looking for -- a breakpoint here tells you the write really did fail.
   }
 }
 </script>

@@ -118,5 +118,27 @@ describe('MarkdownViewer', () => {
 
       expect(writeText).toHaveBeenCalledWith('# Heading')
     })
+
+    it('confirms the copy on the button', async () => {
+      const wrapper = mount(MarkdownViewer)
+      const button = buttonLabelled(wrapper, 'Copy')
+
+      await button.trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(button.text()).toBe('Copied')
+    })
+
+    it('survives a clipboard the browser refuses', async () => {
+      writeText.mockRejectedValue(new Error('denied'))
+      const wrapper = mount(MarkdownViewer)
+      const button = buttonLabelled(wrapper, 'Copy')
+
+      await button.trigger('click')
+      await wrapper.vm.$nextTick()
+
+      // No unhandled rejection, and no false confirmation.
+      expect(button.text()).toBe('Copy')
+    })
   })
 })

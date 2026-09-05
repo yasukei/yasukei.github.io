@@ -32,8 +32,26 @@ function clear() {
   input.value = ''
 }
 
-function copy() {
-  navigator.clipboard.writeText(input.value)
+const copied = ref(false)
+
+// Kept in the same shape as KanaConverter's copy, so the two tools do not
+// invite the question of why they differ.
+async function copy() {
+  try {
+    await navigator.clipboard.writeText(input.value)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 1200)
+  } catch {
+    // Clipboard access can be denied; there is nothing useful to do about it,
+    // so the button simply never confirms.
+    //
+    // Reaching this line is untested: Vitest's mock attaches its own handler
+    // to the promise it returns, so a rejection here cannot be observed from a
+    // test. If you are debugging a denied clipboard, this is the line you are
+    // looking for -- a breakpoint here tells you the write really did fail.
+  }
 }
 
 const isFullscreen = ref(false)
@@ -55,7 +73,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 <template>
   <div class="mv-root" :class="{ 'mv-fullscreen': isFullscreen }">
     <div class="mv-toolbar">
-      <button class="mv-btn" @click="copy">Copy</button>
+      <button class="mv-btn" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
       <button class="mv-btn" @click="clear">Clear</button>
       <button class="mv-btn mv-btn-fs" @click="toggleFullscreen">
         {{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}
