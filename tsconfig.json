@@ -7,6 +7,9 @@
     "types": ["vite/client", "node"],
     "strict": true,
     "noEmit": true,
+    // Nothing is emitted, so tests may import docs/.vitepress/config.mts by
+    // its real name; without the extension the config cannot be resolved.
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
