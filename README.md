@@ -13,7 +13,7 @@ The production site is deployed and hosted at:
 This website is built using **VitePress**.
 
 ### Prerequisites
-Make sure you have Node.js installed.
+**Node.js 26** — the version CI builds with. Every release up to 25 has reached end of life.
 
 ### 1. Install Dependencies
 Run the following command in the root directory to install all required dependencies:
