@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { marked } from 'marked'
 
@@ -42,7 +42,7 @@ function toggleFullscreen() {
   isFullscreen.value = !isFullscreen.value
 }
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && isFullscreen.value) {
     isFullscreen.value = false
   }

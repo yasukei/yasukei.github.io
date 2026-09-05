@@ -1,16 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+
+type Pane = 'hiragana' | 'katakana'
 
 // Hiragana U+3041-U+3096 and the iteration marks ゝゞ map onto katakana
 // by a fixed +0x60 offset. Everything else passes through untouched.
 const HIRAGANA_RE = /[ぁ-ゖゝゞ]/g
 const KATAKANA_RE = /[ァ-ヶヽヾ]/g
 
-function toKatakana(text) {
+function toKatakana(text: string): string {
   return text.replace(HIRAGANA_RE, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60))
 }
 
-function toHiragana(text) {
+function toHiragana(text: string): string {
   return text.replace(KATAKANA_RE, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0x60))
 }
 
@@ -19,7 +21,7 @@ const katakana = ref(toKatakana(hiragana.value))
 
 // Guard so the pane being edited is never rewritten (which would move the caret).
 // Sync flush keeps the guard valid while the paired watcher runs.
-let source = null
+let source: Pane | null = null
 
 watch(hiragana, (value) => {
   if (source === 'katakana') return
@@ -41,9 +43,9 @@ function clear() {
   hiragana.value = ''
 }
 
-const copied = ref('')
+const copied = ref<Pane | ''>('')
 
-async function copy(kind) {
+async function copy(kind: Pane) {
   const text = kind === 'hiragana' ? hiragana.value : katakana.value
   try {
     await navigator.clipboard.writeText(text)
@@ -51,7 +53,7 @@ async function copy(kind) {
     setTimeout(() => {
       if (copied.value === kind) copied.value = ''
     }, 1200)
-  } catch (e) {
+  } catch {
     // Clipboard access can be denied; nothing useful to do here.
   }
 }
