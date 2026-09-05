@@ -1,20 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { toHiragana, toKatakana } from '../lib/kana'
 
 type Pane = 'hiragana' | 'katakana'
-
-// Hiragana U+3041-U+3096 and the iteration marks ゝゞ map onto katakana
-// by a fixed +0x60 offset. Everything else passes through untouched.
-const HIRAGANA_RE = /[ぁ-ゖゝゞ]/g
-const KATAKANA_RE = /[ァ-ヶヽヾ]/g
-
-function toKatakana(text: string): string {
-  return text.replace(HIRAGANA_RE, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60))
-}
-
-function toHiragana(text: string): string {
-  return text.replace(KATAKANA_RE, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0x60))
-}
 
 const hiragana = ref('ひらがな と カタカナ を へんかん します。')
 const katakana = ref(toKatakana(hiragana.value))
