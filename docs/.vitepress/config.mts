@@ -21,7 +21,7 @@ function getTitleFromMarkdown(filePath: string): string {
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
 
-function generateSidebarItems(dirPath: string, relativePath: string = '/notes/'): any[] {
+function generateSidebarItems(dirPath: string, relativePath: string): any[] {
   const items: any[] = []
   if (!fs.existsSync(dirPath)) return items
 
@@ -73,14 +73,14 @@ export default defineConfig({
         text: 'Notes',
         link: '/notes/',
         items: [
-          ...generateSidebarItems(path.join(process.cwd(), 'docs/notes'))
+          ...generateSidebarItems(path.join(process.cwd(), 'docs/notes'), '/notes/')
         ]
       },
       {
         text: 'Tools',
         link: '/tools/',
         items: [
-          ...generateSidebarItems(path.join(process.cwd(), 'docs/tools'))
+          ...generateSidebarItems(path.join(process.cwd(), 'docs/tools'), '/tools/')
         ]
       }
     ],
