@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
@@ -18,7 +18,10 @@
     "docs/**/*.mts",
     "docs/**/*.vue",
     "test/**/*.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    // Listed explicitly: `include` globs skip dot-directories, so
+    // docs/**/*.mts alone leaves the VitePress config unchecked.
+    "docs/.vitepress/config.mts"
   ],
   "exclude": [
     "node_modules",
