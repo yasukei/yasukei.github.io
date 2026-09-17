@@ -11,6 +11,7 @@
  */
 
 import type { Size } from './image-resize'
+import type { Rect } from './collage-layout'
 
 export class CanvasUnavailableError extends Error {
   constructor() {
@@ -49,8 +50,17 @@ export function createCanvas(size: Size): HTMLCanvasElement {
   return canvas
 }
 
-/** One resampling pass onto a canvas of exactly `size`. */
-export function drawStep(source: CanvasImageSource, size: Size): HTMLCanvasElement {
+/**
+ * One resampling pass onto a canvas of exactly `size`. `crop` takes only that
+ * part of the source, which is how a cell is filled without distorting the
+ * image: the crop is chosen to match the cell's shape, and the aspect ratio is
+ * preserved by never scaling the two axes differently.
+ */
+export function drawStep(
+  source: CanvasImageSource,
+  size: Size,
+  crop?: Rect
+): HTMLCanvasElement {
   const canvas = createCanvas(size)
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new CanvasUnavailableError()
@@ -59,20 +69,31 @@ export function drawStep(source: CanvasImageSource, size: Size): HTMLCanvasEleme
   // case where the difference shows.
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
-  ctx.drawImage(source, 0, 0, size.width, size.height)
+  if (crop) {
+    ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, size.width, size.height)
+  } else {
+    ctx.drawImage(source, 0, 0, size.width, size.height)
+  }
   return canvas
 }
 
 /**
  * Draws through every size in `plan`, each step feeding the next, and returns
  * the final canvas. Intermediate canvases are dropped as they are passed.
+ *
+ * `crop` applies to the first pass only -- after that the canvas in hand holds
+ * the cropped image and nothing more, so cropping again would cut into it.
  */
-export function renderPlan(source: CanvasImageSource, plan: readonly Size[]): HTMLCanvasElement {
+export function renderPlan(
+  source: CanvasImageSource,
+  plan: readonly Size[],
+  crop?: Rect
+): HTMLCanvasElement {
   if (plan.length === 0) throw new Error('Nothing to draw: the plan is empty.')
 
   let current: HTMLCanvasElement | null = null
   for (const size of plan) {
-    current = drawStep(current ?? source, size)
+    current = current ? drawStep(current, size) : drawStep(source, size, crop)
   }
   return current as HTMLCanvasElement
 }

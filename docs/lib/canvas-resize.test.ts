@@ -23,6 +23,8 @@ interface DrawCall {
   width: number
   height: number
   source: unknown
+  /** The source rectangle, when the call cropped. */
+  crop?: { x: number; y: number; width: number; height: number }
 }
 
 const draws: DrawCall[] = []
@@ -43,8 +45,15 @@ beforeEach(() => {
       set imageSmoothingQuality(value: string) {
         record.quality = value
       },
-      drawImage: (source: unknown, _x: number, _y: number, width: number, height: number) => {
-        draws.push({ source, width, height })
+      drawImage: (source: unknown, ...rest: number[]) => {
+        // Three arities exist; the nine argument form is the cropping one.
+        if (rest.length === 8) {
+          const [x, y, width, height, , , destWidth, destHeight] = rest
+          draws.push({ source, width: destWidth, height: destHeight, crop: { x, y, width, height } })
+        } else {
+          const [, , width, height] = rest
+          draws.push({ source, width, height })
+        }
       }
     }
   })
@@ -123,6 +132,32 @@ describe('renderPlan', () => {
 
   it('refuses an empty plan rather than returning nothing', () => {
     expect(() => renderPlan(source, [])).toThrow()
+  })
+})
+
+describe('cropping', () => {
+  const crop = { x: 500, y: 0, width: 3000, height: 3000 }
+
+  it('takes only the cropped part of the source', () => {
+    drawStep(source, { width: 400, height: 400 }, crop)
+
+    expect(draws).toEqual([{ source, width: 400, height: 400, crop }])
+  })
+
+  it('crops on the first pass only', () => {
+    // After the first draw the canvas in hand is already the cropped image;
+    // cropping again would cut into what was kept.
+    renderPlan(source, [{ width: 1500, height: 1500 }, { width: 400, height: 400 }], crop)
+
+    expect(draws[0].crop).toEqual(crop)
+    expect(draws[1].crop).toBeUndefined()
+  })
+
+  it('still steps down, so a crop is not resampled in one go', () => {
+    renderPlan(source, stepPlan(crop, { width: 300, height: 300 }), crop)
+
+    expect(draws.length).toBeGreaterThan(1)
+    expect(draws[draws.length - 1]).toMatchObject({ width: 300, height: 300 })
   })
 })
 
