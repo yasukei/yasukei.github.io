@@ -91,9 +91,8 @@ describe('StepField', () => {
     })
 
     it('does not fight the typist mid-number', async () => {
-      // On a field that starts at 20, the first digit of "50" is a 5, which is
-      // under the minimum; clamping per keystroke would push it back to 20 and
-      // the number could never be typed at all.
+      // Typing "50" into a field with a minimum of 20 starts with a 5; see
+      // `commit` for what clamping it there would do.
       const wrapper = field(20)
 
       await type(wrapper, '5')

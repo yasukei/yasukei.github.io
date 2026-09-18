@@ -28,7 +28,8 @@ npm run typecheck
 npm test
 ```
 `npm run typecheck` checks the `.ts` files and the `.vue` components with `vue-tsc`.
-`npm test` runs the whole suite once; use `npm run test:watch` to rerun tests as you edit.
+`npm test` runs the unit suite once; use `npm run test:watch` to rerun tests as you edit.
+There is a second suite that runs in a real browser — see [Tests](#tests) below.
 
 ### 3. Run Locally (Development Server)
 To start the local development server with hot-reload:
@@ -75,7 +76,10 @@ component thin and the logic reachable from a test.
 
 ### Tests
 
-The suite is in three layers.
+The suite is in four layers, in two Vitest projects.
+
+`npm test` runs the **unit** project — the first three layers. It needs nothing
+installed and is what CI runs.
 
 1. **Logic** — `docs/lib/*.test.ts`, `docs/utils.test.ts`. Pure functions, no DOM,
    so most of what a tool does can be covered here.
@@ -83,7 +87,34 @@ The suite is in three layers.
    a logic test cannot reach: state, events, lifecycle.
 3. **Repository-wide** — `test/`. Links and heading anchors across every markdown
    file including this one, and the contracts every tool page has to keep.
+4. **Browser** — `*.browser.test.ts`, run by the **browser** project in real
+   browsers through Playwright.
 
 The first two sit next to the code they cover. The third lives in `test/` because it
 belongs to no single file, and it applies to pages added later without being told
 about them.
+
+The DOM the first three layers use is happy-dom, which has no 2D canvas: it returns
+`null` from `getContext('2d')`. Those tests can therefore assert that an image was
+drawn four times at the right sizes, but not what came out. The fourth layer is for
+claims that are about pixels or about the browser itself — that stepping a reduction
+down really does produce the average of the pixels it covers, that `toBlob` writes an
+actual WebP, that a format it cannot encode really does come back as a PNG.
+
+It runs on all three engines — Chromium, Firefox and WebKit — because that is where
+the answers differ: the same downscale can be faithful in one engine and visibly
+broken in another, and a Chromium-only suite would report that some of this
+repository's image code is pointless. The numbers behind that are with the code they
+justify, in `stepPlan` in `docs/lib/image-resize.ts`.
+
+The browsers are downloaded once, into `~/.cache/ms-playwright`:
+
+```bash
+npx playwright install               # ~400MB for all three
+sudo npx playwright install-deps     # system libraries Firefox and WebKit need
+npm run test:browser
+```
+
+Add `--browser=chromium` (or `firefox`, `webkit`) to run just one. `npm run
+test:all` runs both projects. Keep the two suites apart by file name: anything
+matching `*.browser.test.ts` is excluded from the unit project.

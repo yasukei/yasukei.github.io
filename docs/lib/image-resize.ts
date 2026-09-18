@@ -1,12 +1,10 @@
 /**
- * The arithmetic and the bookkeeping behind the image resizer.
+ * The arithmetic and the bookkeeping behind the image resizer: the output size,
+ * the sequence of draws that gets there, the file name, which files are allowed
+ * in, and whether the result would exceed what a canvas can hold.
  *
- * Everything here is pure, and deliberately so: the pixels themselves are moved
- * by the canvas, which the test environment does not implement
- * (`getContext('2d')` returns null under happy-dom), so anything that can be
- * decided without pixels is decided here where it can be tested -- the output
- * size, the sequence of draws that gets there, the file name, which files are
- * allowed in, and whether the result would exceed what a canvas can hold.
+ * Everything here is pure. The pixels are moved by ./canvas-resize, so anything
+ * that can be decided without them is decided here, where a test can reach it.
  *
  * The one piece of image quality that lives here is `stepPlan`, which is most
  * of the reason this tool exists at all. See its comment.
@@ -196,6 +194,20 @@ export function isEnlargement(source: Size, target: Size): boolean {
  * kernel covers the pixels it is averaging, so nothing is skipped; the last
  * step, always less than 2:1, lands exactly on the target.
  *
+ * How much that is worth depends entirely on the browser, which is worth
+ * knowing before anyone decides this is redundant. Drawing thin diagonals from
+ * 1600px to 200px, measured against the average of the pixels each output
+ * pixel covers (docs/lib/canvas-resize.browser.test.ts):
+ *
+ *              one pass   stepped
+ *   Chromium       0.17      0.17
+ *   Firefox       53.26      0.17
+ *   WebKit        64.92     12.46
+ *
+ * Chromium's Skia already downsamples in stages, so there it changes nothing.
+ * On the other two it is the difference between a broken-up image and a
+ * faithful one -- and a Chromium-only test would never show that.
+ *
  * Enlarging gets a single step: there is no extra detail to preserve, and
  * repeated doubling only compounds the interpolation.
  */
@@ -230,7 +242,7 @@ export function pixelCount(size: Size): number {
   return size.width * size.height
 }
 
-/** A canvas this big may come back blank on iOS rather than fail outright. */
+/** More than `MAX_PIXELS`, and so not safe to ask a canvas for. */
 export function exceedsCanvasLimit(size: Size, max: number = MAX_PIXELS): boolean {
   return pixelCount(size) > max
 }

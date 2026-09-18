@@ -238,8 +238,6 @@ describe('outputMime', () => {
   })
 
   it('falls back to PNG for a format with no encoder', () => {
-    // toBlob hands back a PNG for these whatever type is asked for, so the file
-    // would otherwise be named .gif and not be one.
     expect(outputMime('image/gif', 'source')).toBe('image/png')
     expect(outputMime('image/bmp', 'source')).toBe('image/png')
     expect(outputMime('', 'source')).toBe('image/png')

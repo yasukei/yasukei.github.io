@@ -10,9 +10,8 @@ import ImageResizer from './ImageResizer.vue'
  * once and reusing it, re-running when a setting changes, keeping the object
  * URLs from leaking, and reporting what it could not take.
  *
- * happy-dom has no 2D context, so the canvas is stubbed here the same way it
- * is in the canvas-resize tests, and `createImageBitmap` stands in for the
- * decoder with a fixed source size.
+ * The canvas is stubbed as it is in the canvas-resize tests, and
+ * `createImageBitmap` stands in for the decoder with a fixed source size.
  */
 
 const SOURCE = { width: 4000, height: 3000 }
@@ -177,9 +176,7 @@ describe('ImageResizer', () => {
     })
 
     it('decodes afresh each run and frees the pixels afterwards', async () => {
-      // Ten decoded 12 megapixel photos held between runs is most of a
-      // gigabyte, which is enough to have the tab killed on a phone. Decoding
-      // again is the cheaper side of that trade.
+      // The trade is explained in the component; this pins the behaviour.
       vi.useFakeTimers()
       const close = vi.fn()
       createImageBitmap.mockResolvedValue({ ...SOURCE, close })
@@ -268,8 +265,6 @@ describe('ImageResizer', () => {
     })
 
     it('saves a format the canvas cannot encode as PNG', async () => {
-      // A GIF decodes and draws, but toBlob has no encoder for it, so calling
-      // the result .gif would produce a file that is not one.
       const wrapper = await withImages([image('loop.gif', 'image/gif')])
 
       await wrapper.get('.ir-actions .ir-btn').trigger('click')
@@ -287,7 +282,6 @@ describe('ImageResizer', () => {
       await wrapper.get('.ir-btn-main').trigger('click')
       await vi.advanceTimersByTimeAsync(1000)
 
-      // Staggered, because a burst from one gesture gets treated as a popup.
       expect(downloads.map((d) => d.name)).toEqual(['a-1600x1200.jpg', 'b-1600x1200.jpg'])
     })
   })

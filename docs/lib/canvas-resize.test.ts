@@ -12,11 +12,11 @@ import {
 import { stepPlan } from './image-resize'
 
 /**
- * happy-dom has no 2D context, so the context is stubbed and what this module
- * asks of it is checked instead. That is the part worth pinning down: the
- * number of draws, the size of each one, and the smoothing settings -- a
- * regression in any of them is a quietly blurrier image, which no type check
- * or build would notice.
+ * The context is stubbed here and the calls made to it are what is checked --
+ * the number of draws, the size of each, the smoothing settings. A regression
+ * in any of them is a quietly blurrier image that no type check or build would
+ * notice. What those calls actually produce is measured in
+ * ./canvas-resize.browser.test.ts; the README explains why it takes two suites.
  */
 
 interface DrawCall {

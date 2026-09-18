@@ -9,9 +9,9 @@ import CollageMaker from './CollageMaker.vue'
  * composition: which image goes in which rectangle, on a canvas of the right
  * size, with the background filled in.
  *
- * happy-dom has no 2D context, so one is stubbed -- but recorded per canvas,
- * which is what lets the draws onto the output canvas be told apart from the
- * step-down passes onto the temporary ones.
+ * The stubbed context records per canvas, which is what lets the draws onto
+ * the output canvas be told apart from the step-down passes onto the temporary
+ * ones.
  */
 
 interface Draw {
@@ -351,7 +351,6 @@ describe('CollageMaker', () => {
       await wrapper.get('select[aria-label="Format"]').setValue('image/jpeg')
       await settle(wrapper)
 
-      // Otherwise every gap in the collage comes out black.
       const background = fills.filter((fill) => fill.canvas.width === CANVAS.width)
       expect(background.at(-1)?.style).toBe('#ffffff')
     })
@@ -383,8 +382,7 @@ describe('CollageMaker', () => {
       await wrapper.get('input[aria-label="Gap"]').setValue(40)
       await settle(wrapper)
 
-      // Moving a slider redraws from the prepared copies; decoding four photos
-      // again on every frame would make the sliders unusable.
+      // Redraws come from the prepared copies; see `prepare` for why.
       expect(createImageBitmap).toHaveBeenCalledTimes(4)
     })
 

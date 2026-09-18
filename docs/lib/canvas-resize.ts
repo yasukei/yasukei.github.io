@@ -1,13 +1,9 @@
 /**
- * The canvas half of the image resizer: decode, draw, encode.
+ * The canvas half of the image tools: decode, draw, encode. Kept out of the
+ * components so the pipeline can be tested on its own.
  *
- * It is separated from the component so the pipeline can be tested at all.
- * happy-dom gives a canvas element whose `getContext('2d')` returns null, so
- * the tests stub the context and watch the calls this module makes -- which is
- * enough to check the thing worth checking, that the image is drawn through
- * every step of the plan rather than resampled once.
- *
- * The plan itself comes from `stepPlan` in ./image-resize.
+ * The plan it draws through comes from `stepPlan` in ./image-resize, whose
+ * comment explains why the drawing is done in steps at all.
  */
 
 import type { Size } from './image-resize'
@@ -51,10 +47,8 @@ export function createCanvas(size: Size): HTMLCanvasElement {
 }
 
 /**
- * One resampling pass onto a canvas of exactly `size`. `crop` takes only that
- * part of the source, which is how a cell is filled without distorting the
- * image: the crop is chosen to match the cell's shape, and the aspect ratio is
- * preserved by never scaling the two axes differently.
+ * One resampling pass onto a canvas of exactly `size`. `crop` narrows it to
+ * part of the source, chosen by the caller -- see `coverCrop`.
  */
 export function drawStep(
   source: CanvasImageSource,

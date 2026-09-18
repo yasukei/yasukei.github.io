@@ -227,8 +227,6 @@ function place(
   const size = { width: source.width, height: source.height }
 
   if (how === 'cover') {
-    // The crop matches the cell's shape, so the image fills it without ever
-    // being stretched; what does not fit is left outside, centred.
     const crop = coverCrop(size, cell)
     const drawn = renderPlan(source, stepPlan(crop, cell), crop)
     ctx.drawImage(drawn, cell.x, cell.y, cell.width, cell.height)
