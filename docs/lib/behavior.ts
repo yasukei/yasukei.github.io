@@ -88,6 +88,24 @@ function round(n: number | null): number | null {
   return n === null ? null : Math.round(n)
 }
 
+/** How long to wait for a first sensor reading after permission is granted. */
+export const SENSOR_WAIT_MS = 1000
+
+/**
+ * What to say after asking for the motion sensors. No API tells whether the
+ * device has the sensors, so it is told by whether readings arrive once they
+ * are allowed: a desktop grants the permission and then simply sends nothing.
+ *
+ * `answers` are what each requestPermission() resolved to, or 'error' if asking
+ * failed outright.
+ */
+export function sensorPermissionMessage(answers: string[] | 'error', sensed: boolean): string {
+  if (answers === 'error') return '許可をリクエストできませんでした。'
+  if (answers.some((answer) => answer !== 'granted')) return '許可されませんでした。'
+  if (sensed) return '許可されました。'
+  return `許可されましたが、${SENSOR_WAIT_MS / 1000}秒待ってもセンサーの値が届きません。この端末にはセンサーが付いていないようです。`
+}
+
 export class BehaviorLog {
   /** Every movement, with the distance from the one before it. */
   readonly trail: (Point & { d: number })[] = []
@@ -201,6 +219,11 @@ export class BehaviorLog {
 
   accelerate(x: number, y: number, z: number): void {
     this.motion = { x, y, z }
+  }
+
+  /** Whether any sensor reading has arrived at all. */
+  get sensed(): boolean {
+    return this.orientation !== null || this.motion !== null
   }
 
   sections(now: number): Section[] {

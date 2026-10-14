@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import InfoPanel from './InfoPanel.vue'
-import { BehaviorLog, describeElement } from '../lib/behavior'
+import { BehaviorLog, SENSOR_WAIT_MS, describeElement, sensorPermissionMessage } from '../lib/behavior'
 import type { Section } from '../lib/browser-info'
 
 /**
@@ -18,6 +18,9 @@ const sections = ref<Section[]>([])
 const trail = ref<HTMLCanvasElement | null>(null)
 /** iOS (and now Chromium too) can hide the motion sensors until asked, from a click. */
 const sensorsNeedAsking = ref(false)
+const askingSensors = ref(false)
+/** The outcome of the last request, shown beside the button. */
+const sensorStatus = ref('')
 
 interface PermissionAsking {
   requestPermission?: () => Promise<string>
@@ -130,13 +133,24 @@ function tick() {
 }
 
 async function askSensors() {
+  askingSensors.value = true
+  sensorStatus.value = ''
+  let answers: string[] | 'error'
   try {
-    await (DeviceOrientationEvent as unknown as PermissionAsking).requestPermission?.()
-    await (DeviceMotionEvent as unknown as PermissionAsking).requestPermission?.()
+    // Both asked before awaiting either: Safari only allows asking while the
+    // click is fresh, and an await in between can use that up.
+    const asking = [DeviceOrientationEvent, typeof DeviceMotionEvent === 'undefined' ? undefined : DeviceMotionEvent]
+      .map((type) => (type as unknown as PermissionAsking | undefined)?.requestPermission?.())
+      .filter((answer): answer is Promise<string> => answer !== undefined)
+    answers = await Promise.all(asking)
   } catch {
-    // Refused: the rows keep saying no events have arrived.
+    answers = 'error'
   }
-  sensorsNeedAsking.value = false
+  if (answers !== 'error' && answers.every((answer) => answer === 'granted') && !log.sensed) {
+    await new Promise((resolve) => setTimeout(resolve, SENSOR_WAIT_MS))
+  }
+  sensorStatus.value = sensorPermissionMessage(answers, log.sensed)
+  askingSensors.value = false
 }
 
 let timer: ReturnType<typeof setInterval> | undefined
@@ -176,7 +190,10 @@ onBeforeUnmount(() => {
       </label>
     </div>
     <template #before-sensors>
-      <button v-if="sensorsNeedAsking" class="bt-btn" @click="askSensors">傾き・加速度センサーの許可をリクエスト</button>
+      <div v-if="sensorsNeedAsking" class="bt-sensors">
+        <button class="bt-btn" :disabled="askingSensors" @click="askSensors">傾き・加速度センサーの許可をリクエスト</button>
+        <span class="bt-status" role="status">{{ askingSensors ? '確認中…' : sensorStatus }}</span>
+      </div>
     </template>
   </InfoPanel>
 </template>
@@ -233,8 +250,19 @@ onBeforeUnmount(() => {
   color: var(--vp-c-text-2);
 }
 
+.bt-sensors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.bt-status {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
 .bt-btn {
-  align-self: flex-start;
   padding: 4px 12px;
   border: 1px solid var(--vp-c-border);
   border-radius: 4px;
@@ -242,5 +270,10 @@ onBeforeUnmount(() => {
   color: var(--vp-c-text-1);
   cursor: pointer;
   font-size: 13px;
+}
+
+.bt-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 </style>
