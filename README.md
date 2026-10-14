@@ -46,9 +46,9 @@ docs/                      Everything published to the site
 test/                      Checks that span the whole repository
 e2e/                       Smoke tests that drive the built site in a browser
 vitest.config.ts           The unit and browser test suites
-playwright.config.ts       The e2e suite; builds and serves the site itself
-.github/workflows/         CI: install browsers -> type check -> test -> build
-                           -> deploy to Pages
+playwright.config.ts       The e2e suite; serves the built dist/
+.github/workflows/         CI: type check -> unit -> install browsers ->
+                           browser -> build -> e2e -> deploy to Pages
 ```
 
 A new tool is a markdown page in `docs/tools/`, a component in `docs/components/`,
@@ -72,8 +72,8 @@ component thin and the logic reachable from a test.
 - **Browser** — what happy-dom cannot do: real canvas pixels, and how the engines
   differ when downscaling (see `stepPlan` in `docs/lib/image-resize.ts`).
 - **E2E** — smoke tests against the built site: choose an image on a tool page and
-  check that the downloaded file comes out at the right size. It builds the site and
-  starts `docs:preview` by itself.
+  check that the downloaded file comes out at the right size. `npm run test:e2e`
+  builds the site first and serves it with `docs:preview`.
 
 Browser and E2E need the browsers from `npx playwright install --with-deps`.
 Add `--browser=chromium` to `test:browser`, or `--project=chromium` to `test:e2e`,

@@ -41,14 +41,20 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
       - name: Type check
         run: npm run typecheck
-      - name: Test
-        run: npm test
+      # Needs no browsers, so it runs before the install and fails fast.
+      - name: Unit test
+        run: npm run test:unit
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Browser test
+        run: npm run test:browser
       - name: Build with VitePress
         run: npm run build
+      # Serves the dist/ built above, so the site is built only once.
+      - name: E2E test
+        run: npx playwright test
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Upload artifact

@@ -8,12 +8,12 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "typecheck": "vue-tsc --noEmit",
-    "test": "vitest run && playwright test",
+    "test": "vitest run && npm run test:e2e",
     "test:watch": "vitest --project unit",
     "dev": "npm run docs:dev",
     "build": "npm run docs:build",
     "test:browser": "vitest run --project browser",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && playwright test",
     "test:unit": "vitest run --project unit"
   },
   "repository": {
