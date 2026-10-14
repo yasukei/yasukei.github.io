@@ -124,7 +124,7 @@ export function focusSection(env: PageEnv): Section {
         label: 'タブが表示されているか',
         api: 'document.visibilityState',
         value: env.visibilityState,
-        note: '他のタブに切り替えたり最小化したりすると "hidden" になる。オンライン試験や動画広告が「よそ見」を検出するのに使う。'
+        note: '他のタブに切り替えたり最小化したりすると "hidden" になる。オンライン試験や動画広告が「よそ見」を検出するのに使う。切り替えた回数は下の「操作の情報」で記録している。'
       },
       {
         label: 'ウィンドウにフォーカスがあるか',

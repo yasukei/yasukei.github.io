@@ -58,3 +58,18 @@ test('reads the state of its own window', async ({ page }) => {
   ).toHaveText('visible')
   await expect(page.locator('[data-section="load"]')).toContainText('navigate (リンクやURL入力で来た)')
 })
+
+test('records the mouse and the typing as they happen', async ({ page }) => {
+  await page.goto('/tools/browser-reveals')
+  const row = (label: string) => page.locator('.bi-row', { hasText: label }).locator('.bi-value')
+
+  await page.mouse.move(100, 100)
+  await page.mouse.move(300, 250, { steps: 10 })
+  await expect(row('動かした距離')).toHaveText(/^[1-9]\d* px/)
+
+  const field = page.getByLabel('試しに入力する欄')
+  await field.click()
+  await field.pressSequentially('hello', { delay: 30 })
+  await expect(row('入力欄の中身 (送信前)')).toHaveText(/^hello/)
+  await expect(row('キーを押している時間の平均')).toHaveText(/^\d+ ms/)
+})

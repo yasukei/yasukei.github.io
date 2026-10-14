@@ -1,5 +1,6 @@
 <script setup>
 import BrowserInfo from '../components/BrowserInfo.vue'
+import BehaviorTracker from '../components/BehaviorTracker.vue'
 </script>
 
 # ブラウザから読み取れる情報
@@ -30,3 +31,10 @@ GPUの機種や、描画・音声処理の結果に出るわずかな差は、Co
 ウィンドウの大きさや位置、いま見られているかどうかは、ページを開いている間ずっと読み取れます。
 
 <BrowserInfo category="page" />
+
+## 操作の情報 (行動データ)
+
+このページを開いた瞬間から、マウス、スクロール、キー入力などをページ自身が記録しています(ここでは表示しているだけで、どこにも送っていません)。
+マウスの動きやキー入力のリズムには人ごとの癖があるため、ボット検知だけでなく本人の識別(行動バイオメトリクス)にも使われています。
+
+<BehaviorTracker />

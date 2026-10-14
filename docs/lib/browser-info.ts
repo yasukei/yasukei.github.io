@@ -23,6 +23,8 @@ export interface Row {
   note?: string
   /** A data URL drawn by the probe, shown next to the value. */
   image?: string
+  /** What to say for a null value, when "not supported" would be wrong. */
+  missing?: string
 }
 
 export interface Section {
