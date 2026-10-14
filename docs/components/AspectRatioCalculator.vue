@@ -147,7 +147,7 @@ async function copySize() {
 
     <div class="ar-row">
       <label class="ar-field ar-field-ratio">
-        <span class="ar-label">Aspect ratio</span>
+        <span class="ar-label">アスペクト比</span>
         <input
           class="ar-input"
           :class="{ 'ar-input-bad': ratioText.trim() !== '' && ratio === null }"
@@ -155,21 +155,21 @@ async function copySize() {
           type="text"
           spellcheck="false"
           placeholder="16:9"
-          aria-label="Aspect ratio"
+          aria-label="アスペクト比"
         />
       </label>
-      <button class="ar-btn ar-swap" title="Swap width and height" @click="swap">⇄ Swap</button>
+      <button class="ar-btn ar-swap" title="幅と高さを入れ替える" @click="swap">⇄ 入れ替え</button>
     </div>
 
     <p v-if="ratioText.trim() !== '' && ratio === null" class="ar-error">
-      Write the ratio as <code>16:9</code> — <code>16/9</code>, <code>16x9</code> and a bare
-      <code>1.7778</code> work too.
+      比は <code>16:9</code> の形で入力してください。<code>16/9</code>、<code>16x9</code>、
+      <code>1.7778</code> のような小数でも入力できます。
     </p>
-    <p v-else-if="simplified" class="ar-note">Same as <code>{{ simplified }}</code>.</p>
+    <p v-else-if="simplified" class="ar-note"><code>{{ simplified }}</code> と同じ比です。</p>
 
     <div class="ar-row ar-sizes">
       <label class="ar-field">
-        <span class="ar-label">Width</span>
+        <span class="ar-label">幅</span>
         <input
           class="ar-input"
           :value="widthText"
@@ -178,12 +178,12 @@ async function copySize() {
           inputmode="decimal"
           spellcheck="false"
           placeholder="1920"
-          aria-label="Width"
+          aria-label="幅"
         />
       </label>
       <span class="ar-times">×</span>
       <label class="ar-field">
-        <span class="ar-label">Height</span>
+        <span class="ar-label">高さ</span>
         <input
           class="ar-input"
           :value="heightText"
@@ -192,7 +192,7 @@ async function copySize() {
           inputmode="decimal"
           spellcheck="false"
           placeholder="1080"
-          aria-label="Height"
+          aria-label="高さ"
         />
       </label>
     </div>
@@ -200,10 +200,10 @@ async function copySize() {
     <div class="ar-toolbar">
       <label class="ar-check">
         <input type="checkbox" v-model="roundToWhole" />
-        Round to whole numbers
+        整数に丸める
       </label>
       <button class="ar-btn" :disabled="size === ''" @click="copySize">
-        {{ copied ? 'Copied' : 'Copy' }}
+        {{ copied ? 'コピーしました' : 'コピー' }}
       </button>
     </div>
 
@@ -215,8 +215,8 @@ async function copySize() {
     </div>
 
     <p class="ar-hint">
-      Type into either box and the other one follows the ratio. The preset buttons keep whichever
-      side you touched last.
+      どちらかの欄に入力すると、もう一方が比に合わせて変わります。プリセットのボタンを押したときは、
+      最後に入力した側の値が保たれます。
     </p>
   </div>
 </template>

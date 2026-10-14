@@ -2,28 +2,28 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { marked } from 'marked'
 
-const input = ref(`# Markdown Viewer
+const input = ref(`# Markdown ビューア
 
-Type or paste **markdown** here and see it rendered on the right.
+ここに **Markdown** を入力するか貼り付けると、レンダリングした結果がプレビューに表示されます。
 
-## Features
+## 機能
 
-- Real-time preview
-- Standard markdown syntax
-- Code blocks with fencing
+- リアルタイムプレビュー
+- 標準的な Markdown 記法
+- フェンスで囲んだコードブロック
 
-## Example
+## 例
 
 \`\`\`javascript
 const hello = 'world'
 console.log(hello)
 \`\`\`
 
-> Blockquote example
+> 引用の例
 
-| Column A | Column B |
-|----------|----------|
-| Cell 1   | Cell 2   |
+| 列 A   | 列 B   |
+|--------|--------|
+| セル 1 | セル 2 |
 `)
 
 const rendered = computed(() => marked.parse(input.value))
@@ -73,19 +73,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 <template>
   <div class="mv-root" :class="{ 'mv-fullscreen': isFullscreen }">
     <div class="mv-toolbar">
-      <button class="mv-btn" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
-      <button class="mv-btn" @click="clear">Clear</button>
+      <button class="mv-btn" @click="copy">{{ copied ? 'コピーしました' : 'コピー' }}</button>
+      <button class="mv-btn" @click="clear">クリア</button>
       <button class="mv-btn mv-btn-fs" @click="toggleFullscreen">
-        {{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}
+        {{ isFullscreen ? '全画面表示を終了' : '全画面表示' }}
       </button>
     </div>
     <div class="mv-panels">
       <div class="mv-pane">
         <div class="mv-pane-label">Markdown</div>
-        <textarea class="mv-textarea" v-model="input" placeholder="Enter markdown..." spellcheck="false" />
+        <textarea class="mv-textarea" v-model="input" placeholder="Markdown を入力..." spellcheck="false" />
       </div>
       <div class="mv-pane">
-        <div class="mv-pane-label">Preview</div>
+        <div class="mv-pane-label">プレビュー</div>
         <div class="mv-preview vp-doc" v-html="rendered" />
       </div>
     </div>

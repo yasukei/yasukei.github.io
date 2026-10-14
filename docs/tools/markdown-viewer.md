@@ -2,6 +2,6 @@
 import MarkdownViewer from '../components/MarkdownViewer.vue'
 </script>
 
-# Markdown Viewer
+# Markdown ビューア
 
 <MarkdownViewer />

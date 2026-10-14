@@ -2,6 +2,6 @@
 import CollageMaker from '../components/CollageMaker.vue'
 </script>
 
-# Collage Maker
+# コラージュメーカー
 
 <CollageMaker />

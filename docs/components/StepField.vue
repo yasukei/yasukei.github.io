@@ -95,7 +95,7 @@ function commit() {
           inputmode="numeric"
           spellcheck="false"
           :value="draft"
-          :aria-label="`${label} value`"
+          :aria-label="`${label}の値`"
           @input="draft = ($event.target as HTMLInputElement).value"
           @change="commit"
           @keyup.enter="commit"
@@ -107,7 +107,7 @@ function commit() {
             class="sf-arrow"
             type="button"
             :disabled="atMax"
-            :aria-label="`Increase ${label}`"
+            :aria-label="`${label}を増やす`"
             @click="nudge(1)"
           >
             ▲
@@ -116,7 +116,7 @@ function commit() {
             class="sf-arrow"
             type="button"
             :disabled="atMin"
-            :aria-label="`Decrease ${label}`"
+            :aria-label="`${label}を減らす`"
             @click="nudge(-1)"
           >
             ▼

@@ -63,7 +63,7 @@ const ENCODABLE = ['image/png', 'image/jpeg', 'image/webp'] as const
 export type OutputChoice = 'source' | (typeof ENCODABLE)[number]
 
 export const OUTPUT_FORMATS: { label: string; choice: OutputChoice }[] = [
-  { label: 'Same as source', choice: 'source' },
+  { label: '元の形式のまま', choice: 'source' },
   { label: 'WebP', choice: 'image/webp' },
   { label: 'JPEG', choice: 'image/jpeg' },
   { label: 'PNG', choice: 'image/png' }
@@ -78,13 +78,13 @@ function rejectionReason(file: SourceFile): string | null {
   const type = file.type.toLowerCase()
 
   if (type === 'image/heic' || type === 'image/heif' || /\.hei[cf]$/i.test(file.name)) {
-    return 'HEIC is only decodable in Safari — convert to JPEG first'
+    return 'HEIC は Safari でしか読み込めません。先に JPEG に変換してください'
   }
   if (type === 'image/svg+xml') {
-    return 'SVG is a vector image; scale it by changing its width and height'
+    return 'SVG はベクター画像です。幅と高さの指定を変えて拡大・縮小してください'
   }
   if (!type.startsWith('image/')) {
-    return 'Not an image'
+    return '画像ではありません'
   }
   return null
 }
@@ -110,7 +110,7 @@ export function acceptFiles<T extends SourceFile>(
       continue
     }
     if (room === 0) {
-      rejected.push({ name: file.name, reason: `Over the limit of ${max} images` })
+      rejected.push({ name: file.name, reason: `上限の ${max} 枚を超えています` })
       continue
     }
     accepted.push(file)

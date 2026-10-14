@@ -2,6 +2,6 @@
 import ImageResizer from '../components/ImageResizer.vue'
 </script>
 
-# Image Resizer
+# 画像リサイズ
 
 <ImageResizer />

@@ -11,14 +11,14 @@ import type { Rect } from './collage-layout'
 
 export class CanvasUnavailableError extends Error {
   constructor() {
-    super('This browser would not give us a 2D canvas to draw on.')
+    super('このブラウザでは描画用の 2D キャンバスを取得できませんでした。')
     this.name = 'CanvasUnavailableError'
   }
 }
 
 export class EncodeFailedError extends Error {
   constructor(mime: string) {
-    super(`The browser could not encode the result as ${mime}.`)
+    super(`ブラウザが結果を ${mime} にエンコードできませんでした。`)
     this.name = 'EncodeFailedError'
   }
 }
@@ -83,7 +83,7 @@ export function renderPlan(
   plan: readonly Size[],
   crop?: Rect
 ): HTMLCanvasElement {
-  if (plan.length === 0) throw new Error('Nothing to draw: the plan is empty.')
+  if (plan.length === 0) throw new Error('描画するものがありません（縮小手順が空です）。')
 
   let current: HTMLCanvasElement | null = null
   for (const size of plan) {

@@ -280,7 +280,7 @@ describe('AspectRatioCalculator', () => {
       await copy().trigger('click')
       await wrapper.vm.$nextTick()
 
-      expect(copy().text()).toBe('Copied')
+      expect(copy().text()).toBe('コピーしました')
     })
 
     it('has nothing to copy while a box is empty', async () => {
@@ -303,7 +303,7 @@ describe('AspectRatioCalculator', () => {
       await wrapper.vm.$nextTick()
 
       // No unhandled rejection, and no false confirmation.
-      expect(copy().text()).toBe('Copy')
+      expect(copy().text()).toBe('コピー')
     })
   })
 })
