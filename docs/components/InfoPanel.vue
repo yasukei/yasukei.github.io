@@ -114,11 +114,13 @@ async function copyJson() {
 }
 
 .bi-section-title {
-  padding: 6px 12px;
+  padding: 8px 12px;
   background: var(--vp-c-bg-soft);
   border-bottom: 1px solid var(--vp-c-border);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  /* 700 rather than 600: most Japanese system fonts have no semibold, so 600
+     renders at regular weight and the title looks like any other row. */
+  font-weight: 700;
 }
 
 .bi-row {
