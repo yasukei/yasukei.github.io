@@ -125,10 +125,11 @@ export function fnv1a(input: string | ArrayLike<number>): string {
 /**
  * Battery times are in seconds, and Infinity when the browser cannot tell,
  * which is also what it says while not charging (chargingTime) or while
- * charging (dischargingTime).
+ * charging (dischargingTime). For those, `notApplicable` says why there is
+ * no time.
  */
-export function formatDuration(seconds: number): string {
-  if (!Number.isFinite(seconds)) return '不明 (Infinity)'
+export function formatDuration(seconds: number, notApplicable?: string): string {
+  if (!Number.isFinite(seconds)) return notApplicable ? `— (${notApplicable})` : '不明 (Infinity)'
   const minutes = Math.round(seconds / 60)
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -390,12 +391,12 @@ export function batterySection(battery: BatteryInfo | null): Section {
       {
         label: '満充電までの時間',
         api: api('chargingTime'),
-        value: battery ? formatDuration(battery.chargingTime) : null
+        value: battery ? formatDuration(battery.chargingTime, battery.charging ? undefined : '充電していない') : null
       },
       {
         label: '空になるまでの時間',
         api: api('dischargingTime'),
-        value: battery ? formatDuration(battery.dischargingTime) : null
+        value: battery ? formatDuration(battery.dischargingTime, battery.charging ? '充電中' : undefined) : null
       }
     ]
   }

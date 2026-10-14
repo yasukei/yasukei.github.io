@@ -51,10 +51,15 @@ const TABS: Tab[] = [
 ]
 
 const active = ref<Tab['id']>('browser')
-const tabButtons = ref<HTMLButtonElement[]>([])
 
 function fromHash(): Tab['id'] | null {
-  const id = decodeURIComponent(location.hash.slice(1))
+  let id: string
+  try {
+    id = decodeURIComponent(location.hash.slice(1))
+  } catch {
+    // A malformed escape such as #%E0 names no tab.
+    return null
+  }
   return TABS.find((tab) => tab.id === id)?.id ?? null
 }
 
@@ -75,7 +80,8 @@ function onKeydown(event: KeyboardEvent, index: number) {
   if (next === null) return
   event.preventDefault()
   select(TABS[next].id)
-  tabButtons.value[next]?.focus()
+  // Not through a ref array: Vue does not keep one in the order of the v-for.
+  document.getElementById(`rt-tab-${TABS[next].id}`)?.focus()
 }
 
 function onHashChange() {
@@ -100,7 +106,6 @@ onBeforeUnmount(() => {
         v-for="(tab, i) in TABS"
         :id="`rt-tab-${tab.id}`"
         :key="tab.id"
-        ref="tabButtons"
         class="rt-tab"
         role="tab"
         :aria-selected="active === tab.id"

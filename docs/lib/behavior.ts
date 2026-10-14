@@ -17,7 +17,10 @@ export interface Point {
   t: number
 }
 
-export interface Click extends Point {
+export interface Click {
+  /** Where on the viewport; null for a click made from the keyboard. */
+  at: { x: number; y: number } | null
+  t: number
   target: string
 }
 
@@ -77,6 +80,8 @@ export function describeElement(el: ElementLike): string {
 /** How a key is shown: the space bar and other invisible keys get a name. */
 export function keyLabel(key: string): string {
   if (key === ' ') return '␣'
+  // What an IME is composing reports no key of its own.
+  if (key === 'Process') return 'IME'
   return key
 }
 
@@ -143,8 +148,8 @@ export class BehaviorLog {
     if (this.trail.length > TRAIL_LENGTH) this.trail.shift()
   }
 
-  click(x: number, y: number, t: number, target: string): void {
-    this.clicks.push({ x, y, t, target })
+  click(at: { x: number; y: number } | null, t: number, target: string): void {
+    this.clicks.push({ at, t, target })
   }
 
   /** `depth` is how much of the page has been on screen, from 0 to 1. */
@@ -157,7 +162,9 @@ export class BehaviorLog {
 
   keyDown(key: string, code: string, t: number, repeat: boolean): void {
     // Holding a key down repeats keydown; only the first press is a keystroke.
-    if (repeat || this.down.has(code)) return
+    // A key still down from before is one whose keyup never came (the C of
+    // ⌘C on macOS, or a key held while leaving the window), so it starts over.
+    if (repeat) return
     this.down.set(code, { key, t })
     this.pressed++
   }
@@ -269,7 +276,11 @@ export class BehaviorLog {
         {
           label: '最後にクリックした場所',
           api: 'e.clientX, e.clientY, e.target',
-          value: click ? `${Math.round(click.x)}, ${Math.round(click.y)} の ${click.target}` : null,
+          value: !click
+            ? null
+            : click.at
+              ? `${Math.round(click.at.x)}, ${Math.round(click.at.y)} の ${click.target}`
+              : `キーボードで押した ${click.target}`,
           missing: 'まだクリックしていません',
           note: 'どの要素を押したかも分かる。'
         }
@@ -348,7 +359,8 @@ export class BehaviorLog {
               : recent.map(
                   (k) => `${keyLabel(k.key)}  押下 ${Math.round(k.dwell)}ms / 間隔 ${k.flight === null ? '-' : `${Math.round(k.flight)}ms`}`
                 ),
-          missing: 'まだキー入力がありません'
+          missing: 'まだキー入力がありません',
+          note: 'IMEで変換中のキーは e.key が "Process" になるので、「IME」と表示している。'
         }
       ]
     }

@@ -168,6 +168,8 @@ export function probeWebGL(): { info: WebGLInfo; image: ImageProbe | null } | nu
   } catch {
     // The parameters above are still worth showing without the picture.
   }
+  // Each refresh makes a new context, and browsers drop the oldest past about 16.
+  gl.getExtension('WEBGL_lose_context')?.loseContext()
   return { info, image }
 }
 

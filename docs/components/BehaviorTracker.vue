@@ -40,52 +40,61 @@ function scrollDepth(): number {
   return height > 0 ? (window.scrollY + window.innerHeight) / height : 0
 }
 
-const listeners: [EventTarget, string, (e: Event) => void][] = [
-  [window, 'pointermove', (e) => log.move((e as PointerEvent).clientX, (e as PointerEvent).clientY, e.timeStamp)],
-  [
-    window,
-    'click',
-    (e) => {
-      const m = e as MouseEvent
-      const target = m.target instanceof Element ? describeElement(m.target) : '?'
-      log.click(m.clientX, m.clientY, e.timeStamp, target)
-    }
-  ],
-  [window, 'scroll', (e) => log.scroll(window.scrollY, scrollDepth(), e.timeStamp)],
-  [
-    window,
-    'keydown',
-    (e) => {
-      const k = e as KeyboardEvent
-      log.keyDown(k.key, k.code, e.timeStamp, k.repeat)
-    }
-  ],
-  [window, 'keyup', (e) => log.keyUp((e as KeyboardEvent).code, e.timeStamp)],
-  [document, 'selectionchange', () => log.select(selectedText())],
-  [window, 'copy', () => log.copy(selectedText())],
-  [window, 'paste', (e) => log.paste((e as ClipboardEvent).clipboardData?.getData('text') ?? '')],
-  [document, 'visibilitychange', (e) => log.visibility(document.visibilityState, e.timeStamp)],
-  [window, 'focus', (e) => log.focus(e.timeStamp)],
-  [window, 'blur', (e) => log.blur(e.timeStamp)],
-  [
-    window,
-    'deviceorientation',
-    (e) => {
-      const o = e as DeviceOrientationEvent
-      if (o.alpha === null && o.beta === null && o.gamma === null) return
-      log.orient(o.alpha ?? NaN, o.beta ?? NaN, o.gamma ?? NaN)
-    }
-  ],
-  [
-    window,
-    'devicemotion',
-    (e) => {
-      const a = (e as DeviceMotionEvent).accelerationIncludingGravity
-      if (!a || (a.x === null && a.y === null && a.z === null)) return
-      log.accelerate(a.x ?? NaN, a.y ?? NaN, a.z ?? NaN)
-    }
+type Listener = [EventTarget, string, (e: Event) => void]
+
+// Built when mounted: the page is prerendered at build time, where there is
+// no window or document to listen to.
+let listeners: Listener[] = []
+
+function makeListeners(): Listener[] {
+  return [
+    [window, 'pointermove', (e) => log.move((e as PointerEvent).clientX, (e as PointerEvent).clientY, e.timeStamp)],
+    [
+      window,
+      'click',
+      (e) => {
+        const m = e as MouseEvent
+        const target = m.target instanceof Element ? describeElement(m.target) : '?'
+        // A click made with Enter or Space has detail 0 and no position (0, 0).
+        log.click(m.detail === 0 ? null : { x: m.clientX, y: m.clientY }, e.timeStamp, target)
+      }
+    ],
+    [window, 'scroll', (e) => log.scroll(window.scrollY, scrollDepth(), e.timeStamp)],
+    [
+      window,
+      'keydown',
+      (e) => {
+        const k = e as KeyboardEvent
+        log.keyDown(k.key, k.code, e.timeStamp, k.repeat)
+      }
+    ],
+    [window, 'keyup', (e) => log.keyUp((e as KeyboardEvent).code, e.timeStamp)],
+    [document, 'selectionchange', () => log.select(selectedText())],
+    [window, 'copy', () => log.copy(selectedText())],
+    [window, 'paste', (e) => log.paste((e as ClipboardEvent).clipboardData?.getData('text') ?? '')],
+    [document, 'visibilitychange', (e) => log.visibility(document.visibilityState, e.timeStamp)],
+    [window, 'focus', (e) => log.focus(e.timeStamp)],
+    [window, 'blur', (e) => log.blur(e.timeStamp)],
+    [
+      window,
+      'deviceorientation',
+      (e) => {
+        const o = e as DeviceOrientationEvent
+        if (o.alpha === null && o.beta === null && o.gamma === null) return
+        log.orient(o.alpha ?? NaN, o.beta ?? NaN, o.gamma ?? NaN)
+      }
+    ],
+    [
+      window,
+      'devicemotion',
+      (e) => {
+        const a = (e as DeviceMotionEvent).accelerationIncludingGravity
+        if (!a || (a.x === null && a.y === null && a.z === null)) return
+        log.accelerate(a.x ?? NaN, a.y ?? NaN, a.z ?? NaN)
+      }
+    ]
   ]
-]
+}
 
 /** The trail on a picture of the viewport: older movement fades, clicks are dots. */
 function draw(now: number) {
@@ -119,9 +128,10 @@ function draw(now: number) {
 
   ctx.globalAlpha = 1
   ctx.fillStyle = '#e5484d'
-  for (const click of log.clicks.slice(-30)) {
+  for (const { at } of log.clicks.slice(-30)) {
+    if (!at) continue
     ctx.beginPath()
-    ctx.arc(click.x * sx, click.y * sy, 3.5 * dpr, 0, Math.PI * 2)
+    ctx.arc(at.x * sx, at.y * sy, 3.5 * dpr, 0, Math.PI * 2)
     ctx.fill()
   }
 }
@@ -156,6 +166,7 @@ async function askSensors() {
 let timer: ReturnType<typeof setInterval> | undefined
 
 onMounted(() => {
+  listeners = makeListeners()
   for (const [target, type, fn] of listeners) target.addEventListener(type, fn, { passive: true })
   log.scroll(window.scrollY, scrollDepth(), performance.now())
   sensorsNeedAsking.value =

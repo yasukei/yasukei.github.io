@@ -368,6 +368,8 @@ export function privacySection(nav: NavigatorLike): Section {
         label: 'Do Not Track',
         api: 'navigator.doNotTrack',
         value: str(nav.doNotTrack),
+        // Chrome answers null while it is off; only Safari has no such property.
+        missing: 'doNotTrack' in nav ? '未設定 (null)' : undefined,
         note: '"1" なら追跡拒否を設定済み。法的拘束力がなく形骸化していて、Safari は削除済み、Firefox も設定項目を外した。皮肉にも、オンにしている少数派であること自体が識別の材料になる。'
       },
       {

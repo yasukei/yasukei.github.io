@@ -52,9 +52,10 @@ describe('helpers', () => {
     expect(describeElement({ tagName: 'svg', className: { baseVal: 'icon' }, textContent: null })).toBe('svg')
   })
 
-  it('keyLabel names the space bar', () => {
+  it('keyLabel names the space bar, and what an IME is composing', () => {
     expect(keyLabel(' ')).toBe('␣')
     expect(keyLabel('a')).toBe('a')
+    expect(keyLabel('Process')).toBe('IME')
   })
 })
 
@@ -88,12 +89,19 @@ describe('BehaviorLog', () => {
 
     it('records clicks with what was clicked', () => {
       const log = new BehaviorLog()
-      log.click(10.4, 20.6, 0, 'button.bi-btn "再取得"')
-      log.click(5, 6, 1, 'a "Home"')
+      log.click({ x: 10.4, y: 20.6 }, 0, 'button.bi-btn "再取得"')
+      log.click({ x: 5, y: 6 }, 1, 'a "Home"')
 
       const sections = log.sections(1)
       expect(value(sections, 'クリックした回数')).toBe('2 回')
       expect(value(sections, '最後にクリックした場所')).toBe('5, 6 の a "Home"')
+    })
+
+    it('gives no position for a click made from the keyboard', () => {
+      const log = new BehaviorLog()
+      log.click(null, 0, 'button.rt-tab "ハードウェア"')
+
+      expect(value(log.sections(0), '最後にクリックした場所')).toBe('キーボードで押した button.rt-tab "ハードウェア"')
     })
 
     it('keeps only a bounded trail', () => {
@@ -173,6 +181,22 @@ describe('BehaviorLog', () => {
       expect(log.keys.map((k) => [k.key, k.dwell])).toEqual([
         ['t', 90],
         ['h', 90]
+      ])
+    })
+
+    it('starts a key over when its keyup never came, as with the C of ⌘C on macOS', () => {
+      const log = new BehaviorLog()
+      log.keyDown('Meta', 'MetaLeft', 0, false)
+      log.keyDown('c', 'KeyC', 100, false)
+      log.keyUp('MetaLeft', 200) // and no keyup for KeyC
+      log.keyDown('c', 'KeyC', 60_000, false)
+      log.keyUp('KeyC', 60_080)
+
+      const sections = log.sections(60_080)
+      expect(value(sections, 'キーを押した回数')).toBe('3 回')
+      expect(log.keys.map((k) => [k.key, k.dwell])).toEqual([
+        ['Meta', 200],
+        ['c', 80]
       ])
     })
 

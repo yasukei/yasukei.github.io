@@ -67,6 +67,11 @@ describe('formatDuration', () => {
   ])('%d -> %s', (seconds, expected) => {
     expect(formatDuration(seconds)).toBe(expected)
   })
+
+  it('says why there is no time, when it is known', () => {
+    expect(formatDuration(Infinity, '充電中')).toBe('— (充電中)')
+    expect(formatDuration(600, '充電中')).toBe('10分')
+  })
 })
 
 describe('cpuMemorySection', () => {
@@ -193,8 +198,15 @@ describe('batterySection', () => {
 
     expect(row(section, '残量').value).toBe('73%')
     expect(row(section, '充電中か').value).toBe('false')
-    expect(row(section, '満充電までの時間').value).toBe('不明 (Infinity)')
+    expect(row(section, '満充電までの時間').value).toBe('— (充電していない)')
     expect(row(section, '空になるまでの時間').value).toBe('2時間3分')
+  })
+
+  it('shows a laptop charging, and one that cannot tell how long it will take', () => {
+    const section = batterySection({ level: 0.5, charging: true, chargingTime: Infinity, dischargingTime: Infinity })
+
+    expect(row(section, '満充電までの時間').value).toBe('不明 (Infinity)')
+    expect(row(section, '空になるまでの時間').value).toBe('— (充電中)')
   })
 
   it('is unavailable outside Chromium', () => {

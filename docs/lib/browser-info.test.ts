@@ -228,6 +228,15 @@ describe('privacySection', () => {
     // Not in this browser, which is different from being off.
     expect(row(section, 'Global Privacy Control').value).toBeNull()
   })
+
+  it('says Do Not Track is unset where the browser answers null, as Chrome does', () => {
+    const chrome = row(privacySection({ userAgent: '', doNotTrack: null }), 'Do Not Track')
+    expect(chrome.value).toBeNull()
+    expect(chrome.missing).toBe('未設定 (null)')
+
+    // Safari has no such property at all.
+    expect(row(privacySection({ userAgent: '' }), 'Do Not Track').missing).toBeUndefined()
+  })
 })
 
 describe('mediaValue / displaySection', () => {
