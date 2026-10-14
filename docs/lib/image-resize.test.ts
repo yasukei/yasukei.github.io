@@ -47,6 +47,23 @@ describe('targetSize', () => {
     expect(targetSize(PHOTO, { mode: 'width', value: 1333 })).toEqual({ width: 1333, height: 1000 })
   })
 
+  it('sets both sides outright for an exact size, ratio or not', () => {
+    expect(targetSize(PHOTO, { mode: 'exact', width: 100, height: 100 })).toEqual({
+      width: 100,
+      height: 100
+    })
+    expect(targetSize(PHOTO, { mode: 'exact', width: 0, height: 100 })).toBeNull()
+  })
+
+  it('leaves an image alone when an exact size would enlarge either side', () => {
+    const wide = { width: 1600, height: 900 }
+
+    expect(targetSize(wide, { mode: 'exact', width: 1000, height: 1000 })).toEqual(wide)
+    expect(
+      targetSize(wide, { mode: 'exact', width: 1000, height: 1000 }, { allowEnlarge: true })
+    ).toEqual({ width: 1000, height: 1000 })
+  })
+
   it('never returns a side below one pixel', () => {
     const wide = { width: 4000, height: 10 }
 
@@ -122,6 +139,22 @@ describe('stepPlan', () => {
     ])
     expect(stepPlan({ width: 800, height: 600 }, { width: 700, height: 525 })).toEqual([
       { width: 700, height: 525 }
+    ])
+  })
+
+  it('keeps halving the side still far from its target when the ratio changes', () => {
+    // 16:9 into a square: the height is within 2:1 long before the width is.
+    expect(stepPlan({ width: 1600, height: 900 }, { width: 100, height: 100 })).toEqual([
+      { width: 800, height: 450 },
+      { width: 400, height: 225 },
+      { width: 200, height: 113 },
+      { width: 100, height: 100 }
+    ])
+    expect(stepPlan({ width: 1600, height: 150 }, { width: 100, height: 100 })).toEqual([
+      { width: 800, height: 100 },
+      { width: 400, height: 100 },
+      { width: 200, height: 100 },
+      { width: 100, height: 100 }
     ])
   })
 

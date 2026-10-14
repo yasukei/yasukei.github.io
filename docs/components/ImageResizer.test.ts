@@ -223,12 +223,27 @@ describe('ImageResizer', () => {
 
       expect(wrapper.get('.ir-numbers').text()).toContain('1000 × 750 → 1000 × 750')
 
-      await wrapper.get('input[type="checkbox"]').setValue(true)
+      await wrapper.get('input[aria-label="Allow enlarging"]').setValue(true)
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
 
       expect(wrapper.get('.ir-numbers').text()).toContain('→ 1600 × 1200')
       expect(wrapper.get('.ir-warn').text()).toBe('enlarged')
+    })
+
+    it('stretches to an exact width and height once the aspect ratio is let go', async () => {
+      vi.useFakeTimers()
+      const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
+      expect(wrapper.find('input[aria-label="Width"]').exists()).toBe(false)
+
+      await wrapper.get('input[aria-label="Keep aspect ratio"]').setValue(false)
+      await wrapper.get('input[aria-label="Width"]').setValue('300')
+      await wrapper.get('input[aria-label="Height"]').setValue('300')
+      await vi.advanceTimersByTimeAsync(300)
+      await flushPromises()
+
+      expect(wrapper.find('select[aria-label="Resize by"]').exists()).toBe(false)
+      expect(wrapper.get('.ir-numbers').text()).toContain('4000 × 3000 → 300 × 300')
     })
 
     it('offers quality only for a format that has any', async () => {

@@ -13,9 +13,11 @@ import {
   sizeDelta,
   stepPlan,
   targetSize,
+  type ExactSpec,
   type OutputChoice,
   type Rejection,
   type ResizeMode,
+  type ResizeSpec,
   type Size
 } from '../lib/image-resize'
 import { decode, release, renderPlan, toBlob } from '../lib/canvas-resize'
@@ -53,13 +55,20 @@ const values = reactive<Record<ResizeMode, string>>({
   height: '1200',
   percent: '50'
 })
+// Off only for the occasional stretch to an exact size, e.g. 16:9 into a square.
+const keepAspect = ref(true)
+const exact = reactive({ width: '100', height: '100' })
 const format = ref<OutputChoice>('source')
 const quality = ref(0.85)
 const allowEnlarge = ref(false)
 
 const unit = computed(() => MODES.find((m) => m.value === mode.value)?.unit ?? 'px')
 const amount = computed(() => Number(values[mode.value]))
-const spec = computed(() => ({ mode: mode.value, value: amount.value }))
+const spec = computed<ResizeSpec | ExactSpec>(() =>
+  keepAspect.value
+    ? { mode: mode.value, value: amount.value }
+    : { mode: 'exact', width: Number(exact.width), height: Number(exact.height) }
+)
 const showQuality = computed(() =>
   items.value.some((item) => qualityApplies(outputMime(item.file.type, format.value)))
 )
@@ -196,7 +205,7 @@ function scheduleRun() {
   }, RERUN_DELAY)
 }
 
-watch([mode, values, format, quality, allowEnlarge], () => {
+watch([keepAspect, mode, values, exact, format, quality, allowEnlarge], () => {
   if (items.value.length > 0) scheduleRun()
 })
 
@@ -245,29 +254,63 @@ onBeforeUnmount(() => {
     </label>
 
     <div class="ir-settings">
-      <label class="ir-field">
-        <span class="ir-label">Resize by</span>
-        <select class="ir-input" v-model="mode" aria-label="Resize by">
-          <option v-for="option in MODES" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-      </label>
+      <template v-if="keepAspect">
+        <label class="ir-field">
+          <span class="ir-label">Resize by</span>
+          <select class="ir-input" v-model="mode" aria-label="Resize by">
+            <option v-for="option in MODES" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
 
-      <label class="ir-field ir-field-narrow">
-        <span class="ir-label">Amount</span>
-        <span class="ir-amount">
-          <input
-            class="ir-input"
-            v-model="values[mode]"
-            type="text"
-            inputmode="numeric"
-            spellcheck="false"
-            aria-label="Amount"
-          />
-          <span class="ir-unit">{{ unit }}</span>
-        </span>
-      </label>
+        <label class="ir-field ir-field-narrow">
+          <span class="ir-label">Amount</span>
+          <span class="ir-amount">
+            <input
+              class="ir-input"
+              v-model="values[mode]"
+              type="text"
+              inputmode="numeric"
+              spellcheck="false"
+              aria-label="Amount"
+            />
+            <span class="ir-unit">{{ unit }}</span>
+          </span>
+        </label>
+      </template>
+
+      <template v-else>
+        <label class="ir-field ir-field-narrow">
+          <span class="ir-label">Width</span>
+          <span class="ir-amount">
+            <input
+              class="ir-input"
+              v-model="exact.width"
+              type="text"
+              inputmode="numeric"
+              spellcheck="false"
+              aria-label="Width"
+            />
+            <span class="ir-unit">px</span>
+          </span>
+        </label>
+
+        <label class="ir-field ir-field-narrow">
+          <span class="ir-label">Height</span>
+          <span class="ir-amount">
+            <input
+              class="ir-input"
+              v-model="exact.height"
+              type="text"
+              inputmode="numeric"
+              spellcheck="false"
+              aria-label="Height"
+            />
+            <span class="ir-unit">px</span>
+          </span>
+        </label>
+      </template>
 
       <label class="ir-field">
         <span class="ir-label">Format</span>
@@ -293,7 +336,12 @@ onBeforeUnmount(() => {
     </div>
 
     <label class="ir-check">
-      <input type="checkbox" v-model="allowEnlarge" />
+      <input type="checkbox" v-model="keepAspect" aria-label="Keep aspect ratio" />
+      Keep aspect ratio (off: set width and height directly, stretching the image to fit)
+    </label>
+
+    <label class="ir-check">
+      <input type="checkbox" v-model="allowEnlarge" aria-label="Allow enlarging" />
       Allow enlarging (off: an image smaller than the target is left alone)
     </label>
 

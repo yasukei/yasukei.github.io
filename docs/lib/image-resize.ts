@@ -25,6 +25,16 @@ export interface ResizeSpec {
   value: number
 }
 
+/**
+ * Both sides given outright, aspect ratio or not. For the occasional job of
+ * forcing a 16:9 shot into a 100x100 square, where the stretch is the point.
+ */
+export interface ExactSpec {
+  mode: 'exact'
+  width: number
+  height: number
+}
+
 /** A dropped file, reduced to what the decisions here need. */
 export interface SourceFile {
   name: string
@@ -128,7 +138,8 @@ function round(size: Size): Size {
 }
 
 /**
- * The size `source` becomes under `spec`, with the aspect ratio kept.
+ * The size `source` becomes under `spec`: with the aspect ratio kept, unless
+ * `spec` is an `ExactSpec`, which sets both sides regardless.
  *
  * `allowEnlarge` is off by default: this tool is for making images smaller, and
  * asking for a 2000px longest edge from a 1200px photo should leave it alone
@@ -136,10 +147,16 @@ function round(size: Size): Size {
  */
 export function targetSize(
   source: Size,
-  spec: ResizeSpec,
+  spec: ResizeSpec | ExactSpec,
   options: { allowEnlarge?: boolean } = {}
 ): Size | null {
   if (!isUsableSize(source)) return null
+
+  if (spec.mode === 'exact') {
+    if (!isUsableSize(spec)) return null
+    return finish(source, round(spec), options)
+  }
+
   if (!Number.isFinite(spec.value) || spec.value <= 0) return null
 
   const ratio = { width: source.width, height: source.height }
@@ -172,11 +189,14 @@ export function targetSize(
       return null
   }
 
-  const rounded = round(target)
-  if (options.allowEnlarge !== true && isEnlargement(source, rounded)) {
+  return finish(source, round(target), options)
+}
+
+function finish(source: Size, target: Size, options: { allowEnlarge?: boolean }): Size {
+  if (options.allowEnlarge !== true && isEnlargement(source, target)) {
     return { ...source }
   }
-  return rounded
+  return target
 }
 
 /** True when the target is bigger than the source on either side. */
@@ -218,9 +238,11 @@ export function stepPlan(from: Size, to: Size): Size[] {
   let current = round(from)
   const target = round(to)
 
-  // Both sides are compared so a plan is never made that overshoots one axis;
-  // with the ratio preserved they cross the threshold together anyway.
-  while (current.width > target.width * 2 && current.height > target.height * 2) {
+  // Halving goes on while either side is still more than 2:1 from its target.
+  // With the ratio preserved they cross the threshold together anyway; with an
+  // exact size they need not, and the side that gets there first is held at
+  // its target (never below) while the other keeps halving.
+  while (current.width > target.width * 2 || current.height > target.height * 2) {
     current = round({
       width: Math.max(target.width, current.width / 2),
       height: Math.max(target.height, current.height / 2)
