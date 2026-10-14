@@ -40,9 +40,10 @@ updates:
     groups:
       # These are released in lockstep and require each other's exact version,
       # so a major split across separate pull requests would fail npm ci in
-      # every one of them.
+      # every one of them. The names are spelled out: "@vitest/*" matched
+      # neither @vitest/ package, and both went to npm-minor-patch instead.
       vitest:
-        patterns: ["vitest", "@vitest/*"]
+        patterns: ["vitest", "@vitest/browser", "@vitest/browser-playwright"]
       playwright:
         patterns: ["playwright", "@playwright/test"]
       npm-minor-patch:
