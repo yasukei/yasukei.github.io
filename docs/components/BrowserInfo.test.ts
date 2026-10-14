@@ -176,3 +176,40 @@ describe('BrowserInfo install', () => {
     expect(valueOf(wrapper, 'インストールされているフォント')).toContain('取得できない')
   })
 })
+
+describe('BrowserInfo page', () => {
+  it('follows a resize of the window', async () => {
+    const wrapper = mount(BrowserInfo, { props: { category: 'page' as const } })
+    await flushPromises()
+    expect(wrapper.findAll('.bi-section').map((s) => s.attributes('data-section'))).toEqual([
+      'window',
+      'focus',
+      'origin',
+      'load'
+    ])
+
+    const width = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { value: 640, configurable: true })
+    window.dispatchEvent(new Event('resize'))
+    await flushPromises()
+
+    expect(valueOf(wrapper, 'ページが表示されている範囲')).toMatch(/^640 × /)
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true })
+    wrapper.unmount()
+  })
+
+  it('polls for what changes without an event, and stops when it is gone', async () => {
+    vi.useFakeTimers()
+    try {
+      const wrapper = mount(BrowserInfo, { props: { category: 'page' as const } })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(vi.getTimerCount()).toBe(1)
+
+      wrapper.unmount()
+
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

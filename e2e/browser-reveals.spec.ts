@@ -44,3 +44,17 @@ test('finds installed fonts', async ({ page }) => {
   expect(found).toBeGreaterThan(0)
   expect(found).toBeLessThan(total)
 })
+
+test('reads the state of its own window', async ({ page }) => {
+  await page.goto('/tools/browser-reveals')
+
+  const viewport = page.viewportSize()!
+  const section = page.locator('[data-section="window"]')
+  await expect(section.locator('.bi-row', { hasText: 'innerWidth' }).locator('.bi-text')).toHaveText(
+    `${viewport.width} × ${viewport.height}`
+  )
+  await expect(
+    page.locator('[data-section="focus"] .bi-row', { hasText: 'visibilityState' }).locator('.bi-text')
+  ).toHaveText('visible')
+  await expect(page.locator('[data-section="load"]')).toContainText('navigate (リンクやURL入力で来た)')
+})

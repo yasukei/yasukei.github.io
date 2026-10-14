@@ -13,8 +13,9 @@ import { INPUT_FEATURES, SCREEN_FEATURES, collectHardware } from '../lib/hardwar
 import { runProbes } from '../lib/hardware-probes'
 import { collectInstall } from '../lib/install-info'
 import { runInstallProbes } from '../lib/install-probes'
+import { collectPage, readPageEnv } from '../lib/page-info'
 
-type Category = 'browser' | 'hardware' | 'install'
+type Category = 'browser' | 'hardware' | 'install' | 'page'
 
 const props = defineProps<{ category: Category }>()
 
@@ -24,6 +25,8 @@ interface CategorySource {
   media: MediaFeature[]
   /** Window events that do the same. */
   events: string[]
+  /** For values that change without an event, such as the window's position. */
+  pollMs?: number
 }
 
 const matchMedia = (query: string) => window.matchMedia(query)
@@ -50,6 +53,13 @@ const SOURCES: Record<Category, CategorySource> = {
     collect: async () => collectInstall(await runInstallProbes(navigator)),
     media: [],
     events: []
+  },
+  page: {
+    collect: async () => collectPage(readPageEnv(window)),
+    media: [],
+    // visibilitychange is fired at the document and bubbles up to the window.
+    events: ['resize', 'focus', 'blur', 'visibilitychange', 'online', 'offline', 'load'],
+    pollMs: 1000
   }
 }
 
@@ -84,6 +94,10 @@ onMounted(() => {
   for (const event of source.events) {
     window.addEventListener(event, refresh)
     stops.push(() => window.removeEventListener(event, refresh))
+  }
+  if (source.pollMs) {
+    const timer = setInterval(refresh, source.pollMs)
+    stops.push(() => clearInterval(timer))
   }
 })
 
