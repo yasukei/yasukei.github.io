@@ -133,7 +133,7 @@ describe('CollageMaker', () => {
     const wrapper = mount(CollageMaker)
 
     expect(wrapper.find('.cm-preview').exists()).toBe(false)
-    expect(wrapper.get('.cm-hint').text()).toContain('Drop two or more images')
+    expect(wrapper.get('.cm-hint').text()).toContain('2 枚以上の画像')
   })
 
   describe('the hero', () => {
@@ -153,7 +153,7 @@ describe('CollageMaker', () => {
       const wrapper = await withImages(images(4))
 
       forget()
-      await wrapper.get('select[aria-label="Hero position"]').setValue('right')
+      await wrapper.get('select[aria-label="メイン画像の位置"]').setValue('right')
       await settle(wrapper)
 
       const [hero, ...rest] = composited()
@@ -167,7 +167,7 @@ describe('CollageMaker', () => {
       const before = composited()[0].width
 
       forget()
-      await wrapper.get('input[aria-label="Hero size"]').setValue('80')
+      await wrapper.get('input[aria-label="メイン画像のサイズ"]').setValue('80')
       await settle(wrapper)
 
       expect(composited()[0].width).toBeGreaterThan(before)
@@ -178,14 +178,14 @@ describe('CollageMaker', () => {
       const wrapper = await withImages(images(4))
 
       forget()
-      await wrapper.get('select[aria-label="Hero position"]').setValue('none')
-      await wrapper.get('select[aria-label="Layout"]').setValue('grid')
+      await wrapper.get('select[aria-label="メイン画像の位置"]').setValue('none')
+      await wrapper.get('select[aria-label="レイアウト"]').setValue('grid')
       await settle(wrapper)
 
       const cells = composited()
       expect(cells).toHaveLength(4)
       expect(new Set(cells.map((cell) => `${cell.width}x${cell.height}`)).size).toBe(1)
-      expect(wrapper.find('input[aria-label="Hero size"]').exists()).toBe(false)
+      expect(wrapper.find('input[aria-label="メイン画像のサイズ"]').exists()).toBe(false)
     })
 
     it('is whichever thumbnail was clicked', async () => {
@@ -217,7 +217,7 @@ describe('CollageMaker', () => {
       const wrapper = await withImages(images(5))
 
       forget()
-      await wrapper.get('select[aria-label="Layout"]').setValue('grid')
+      await wrapper.get('select[aria-label="レイアウト"]').setValue('grid')
       await settle(wrapper)
 
       // Four cells beside the hero, all the same size.
@@ -250,7 +250,7 @@ describe('CollageMaker', () => {
       vi.useFakeTimers()
       const wrapper = await withImages(images(5))
 
-      await wrapper.get('select[aria-label="Layout"]').setValue('grid')
+      await wrapper.get('select[aria-label="レイアウト"]').setValue('grid')
       await settle(wrapper)
 
       expect(wrapper.get('.cm-toolbar .cm-btn:nth-child(2)').attributes('disabled')).toBeDefined()
@@ -275,7 +275,7 @@ describe('CollageMaker', () => {
       const wrapper = await withImages(images(4))
 
       forget()
-      await wrapper.get('select[aria-label="Hero fit"]').setValue('cover')
+      await wrapper.get('select[aria-label="メイン画像の収め方"]').setValue('cover')
       await settle(wrapper)
 
       // Cover draws onto exactly the cell, with the crop doing the work, so
@@ -289,7 +289,7 @@ describe('CollageMaker', () => {
       const before = composited().map(rect)
 
       forget()
-      await wrapper.get('select[aria-label="Fit"]').setValue('contain')
+      await wrapper.get('select[aria-label="収め方"]').setValue('contain')
       await settle(wrapper)
       const after = composited().map(rect)
 
@@ -298,7 +298,7 @@ describe('CollageMaker', () => {
       expect(after.slice(1)).not.toEqual(before.slice(1))
 
       forget()
-      await wrapper.get('select[aria-label="Hero fit"]').setValue('cover')
+      await wrapper.get('select[aria-label="メイン画像の収め方"]').setValue('cover')
       await settle(wrapper)
       const both = composited().map(rect)
 
@@ -313,12 +313,12 @@ describe('CollageMaker', () => {
       vi.useFakeTimers()
       const wrapper = await withImages(images(3))
 
-      await wrapper.get('select[aria-label="Canvas ratio"]').setValue('9:16')
+      await wrapper.get('select[aria-label="キャンバスの比率"]').setValue('9:16')
       await settle(wrapper)
 
       expect(wrapper.get('.cm-totals').text()).toContain('1080 × 1920')
 
-      await wrapper.get('input[aria-label="Long edge"]').setValue('1200')
+      await wrapper.get('input[aria-label="長辺"]').setValue('1200')
       await settle(wrapper)
 
       expect(wrapper.get('.cm-totals').text()).toContain('675 × 1200')
@@ -337,7 +337,7 @@ describe('CollageMaker', () => {
       const wrapper = await withImages(images(3))
 
       forget()
-      await wrapper.get('select[aria-label="Background"]').setValue('transparent')
+      await wrapper.get('select[aria-label="背景"]').setValue('transparent')
       await settle(wrapper)
 
       expect(fills.filter((fill) => fill.canvas.width === CANVAS.width)).toHaveLength(0)
@@ -347,8 +347,8 @@ describe('CollageMaker', () => {
       vi.useFakeTimers()
       const wrapper = await withImages(images(3))
 
-      await wrapper.get('select[aria-label="Background"]').setValue('transparent')
-      await wrapper.get('select[aria-label="Format"]').setValue('image/jpeg')
+      await wrapper.get('select[aria-label="背景"]').setValue('transparent')
+      await wrapper.get('select[aria-label="形式"]').setValue('image/jpeg')
       await settle(wrapper)
 
       const background = fills.filter((fill) => fill.canvas.width === CANVAS.width)
@@ -359,10 +359,10 @@ describe('CollageMaker', () => {
       vi.useFakeTimers()
       const wrapper = await withImages(images(3))
 
-      await wrapper.get('input[aria-label="Long edge"]').setValue('9000')
+      await wrapper.get('input[aria-label="長辺"]').setValue('9000')
       await settle(wrapper)
 
-      expect(wrapper.get('.cm-error').text()).toContain('too large')
+      expect(wrapper.get('.cm-error').text()).toContain('大きすぎます')
     })
   })
 
@@ -371,7 +371,7 @@ describe('CollageMaker', () => {
       const wrapper = await withImages(images(13))
 
       expect(wrapper.findAll('.cm-chip')).toHaveLength(12)
-      expect(wrapper.get('.cm-rejected').text()).toContain('Over the limit of 12')
+      expect(wrapper.get('.cm-rejected').text()).toContain('上限の 12 枚')
     })
 
     it('prepares each image once, not on every redraw', async () => {
@@ -379,7 +379,7 @@ describe('CollageMaker', () => {
       const wrapper = await withImages(images(4))
       expect(createImageBitmap).toHaveBeenCalledTimes(4)
 
-      await wrapper.get('input[aria-label="Gap"]').setValue(40)
+      await wrapper.get('input[aria-label="間隔"]').setValue(40)
       await settle(wrapper)
 
       // Redraws come from the prepared copies; see `prepare` for why.
@@ -390,7 +390,7 @@ describe('CollageMaker', () => {
       vi.useFakeTimers()
       const wrapper = await withImages(images(2))
 
-      await wrapper.get('input[aria-label="Long edge"]').setValue('2400')
+      await wrapper.get('input[aria-label="長辺"]').setValue('2400')
       await settle(wrapper)
 
       expect(createImageBitmap).toHaveBeenCalledTimes(4)
@@ -412,7 +412,7 @@ describe('CollageMaker', () => {
 
       const wrapper = await withImages(images(2))
 
-      expect(wrapper.get('.cm-error').text()).toContain('None of these images')
+      expect(wrapper.get('.cm-error').text()).toContain('どの画像も')
     })
   })
 

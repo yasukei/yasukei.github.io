@@ -38,7 +38,7 @@ describe('MarkdownViewer', () => {
     const wrapper = mount(MarkdownViewer)
     expect(textareaValue(wrapper)).not.toBe('')
 
-    await buttonLabelled(wrapper, 'Clear').trigger('click')
+    await buttonLabelled(wrapper, 'クリア').trigger('click')
 
     expect(textareaValue(wrapper)).toBe('')
     expect(wrapper.get('.mv-preview').text()).toBe('')
@@ -50,15 +50,15 @@ describe('MarkdownViewer', () => {
       const toggle = wrapper.get('.mv-btn-fs')
 
       expect(wrapper.get('.mv-root').classes()).not.toContain('mv-fullscreen')
-      expect(toggle.text()).toBe('Fullscreen')
+      expect(toggle.text()).toBe('全画面表示')
 
       await toggle.trigger('click')
       expect(wrapper.get('.mv-root').classes()).toContain('mv-fullscreen')
-      expect(toggle.text()).toBe('Exit Fullscreen')
+      expect(toggle.text()).toBe('全画面表示を終了')
 
       await toggle.trigger('click')
       expect(wrapper.get('.mv-root').classes()).not.toContain('mv-fullscreen')
-      expect(toggle.text()).toBe('Fullscreen')
+      expect(toggle.text()).toBe('全画面表示')
     })
 
     it('leaves fullscreen on Escape', async () => {
@@ -114,31 +114,31 @@ describe('MarkdownViewer', () => {
       const wrapper = mount(MarkdownViewer)
       await wrapper.get('textarea').setValue('# Heading')
 
-      await buttonLabelled(wrapper, 'Copy').trigger('click')
+      await buttonLabelled(wrapper, 'コピー').trigger('click')
 
       expect(writeText).toHaveBeenCalledWith('# Heading')
     })
 
     it('confirms the copy on the button', async () => {
       const wrapper = mount(MarkdownViewer)
-      const button = buttonLabelled(wrapper, 'Copy')
+      const button = buttonLabelled(wrapper, 'コピー')
 
       await button.trigger('click')
       await wrapper.vm.$nextTick()
 
-      expect(button.text()).toBe('Copied')
+      expect(button.text()).toBe('コピーしました')
     })
 
     it('survives a clipboard the browser refuses', async () => {
       writeText.mockRejectedValue(new Error('denied'))
       const wrapper = mount(MarkdownViewer)
-      const button = buttonLabelled(wrapper, 'Copy')
+      const button = buttonLabelled(wrapper, 'コピー')
 
       await button.trigger('click')
       await wrapper.vm.$nextTick()
 
       // No unhandled rejection, and no false confirmation.
-      expect(button.text()).toBe('Copy')
+      expect(button.text()).toBe('コピー')
     })
   })
 })

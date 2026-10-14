@@ -39,24 +39,24 @@ interface Item {
 
 const RATIOS = ['16:9', '3:2', '4:3', '1:1', '4:5', '9:16']
 const LAYOUTS: { value: FillMode; label: string }[] = [
-  { value: 'grid', label: 'Grid — even' },
-  { value: 'mosaic', label: 'Mosaic — mixed sizes' },
-  { value: 'random', label: 'Random' }
+  { value: 'grid', label: 'グリッド — 均等' },
+  { value: 'mosaic', label: 'モザイク — 大小混在' },
+  { value: 'random', label: 'ランダム' }
 ]
 const HERO_POSITIONS: { value: HeroPosition; label: string }[] = [
-  { value: 'left', label: 'Left' },
-  { value: 'right', label: 'Right' },
-  { value: 'top', label: 'Top' },
-  { value: 'none', label: 'No hero' }
+  { value: 'left', label: '左' },
+  { value: 'right', label: '右' },
+  { value: 'top', label: '上' },
+  { value: 'none', label: 'メイン画像なし' }
 ]
 const BACKGROUNDS: { value: string; label: string }[] = [
-  { value: '#ffffff', label: 'White' },
-  { value: '#000000', label: 'Black' },
-  { value: 'transparent', label: 'Transparent' }
+  { value: '#ffffff', label: '白' },
+  { value: '#000000', label: '黒' },
+  { value: 'transparent', label: '透明' }
 ]
 const FITS: { value: Fit; label: string }[] = [
-  { value: 'cover', label: 'Cover — fill, crop the rest' },
-  { value: 'contain', label: 'Contain — show all of it' }
+  { value: 'cover', label: 'cover — 枠を埋め、はみ出しは切り取る' },
+  { value: 'contain', label: 'contain — 全体を表示' }
 ]
 const FORMATS: { choice: OutputChoice; label: string }[] = [
   { choice: 'image/png', label: 'PNG' },
@@ -200,7 +200,7 @@ async function prepare(item: Item, cap: number): Promise<void> {
     item.error = null
   } catch (error) {
     item.prepared = null
-    item.error = error instanceof Error ? error.message : 'This image could not be read.'
+    item.error = error instanceof Error ? error.message : 'この画像を読み込めませんでした。'
   } finally {
     release(bitmap)
   }
@@ -247,7 +247,7 @@ async function draw() {
     return
   }
   if (exceedsCanvasLimit(canvas)) {
-    failure.value = 'That canvas is too large for the browser to draw.'
+    failure.value = 'このキャンバスはブラウザで描画するには大きすぎます。'
     return
   }
 
@@ -260,7 +260,7 @@ async function draw() {
 
     const usable = items.value.filter((item) => item.prepared !== null)
     if (usable.length === 0) {
-      failure.value = 'None of these images could be read.'
+      failure.value = 'どの画像も読み込めませんでした。'
       discardResult()
       return
     }
@@ -280,7 +280,7 @@ async function draw() {
 
     const output = createCanvas(canvas)
     const ctx = output.getContext('2d')
-    if (!ctx) throw new Error('This browser would not give us a 2D canvas to draw on.')
+    if (!ctx) throw new Error('このブラウザでは描画用の 2D キャンバスを取得できませんでした。')
 
     // JPEG has no transparency: without this the gaps come out black.
     if (background.value !== 'transparent' || mime.value === 'image/jpeg') {
@@ -302,7 +302,7 @@ async function draw() {
     discardResult()
     result.value = { url: URL.createObjectURL(blob), bytes: blob.size, size: canvas }
   } catch (error) {
-    failure.value = error instanceof Error ? error.message : 'The collage could not be drawn.'
+    failure.value = error instanceof Error ? error.message : 'コラージュを描画できませんでした。'
   } finally {
     if (runId === currentRun) busy.value = false
   }
@@ -367,12 +367,12 @@ onBeforeUnmount(() => {
         accept="image/*"
         multiple
         @change="onPick"
-        aria-label="Choose images"
+        aria-label="画像を選択"
       />
-      <strong>Drop images here</strong>
+      <strong>ここに画像をドロップ</strong>
       <span class="cm-drop-note">
-        or click to choose — up to {{ MAX_COLLAGE_FILES }}. The first one is the hero; click any
-        thumbnail to promote it.
+        またはクリックして選択（{{ MAX_COLLAGE_FILES }} 枚まで）。最初の 1 枚がメイン画像になります。
+        ファイル名をクリックすると、その画像をメイン画像にできます。
       </span>
     </label>
 
@@ -393,7 +393,7 @@ onBeforeUnmount(() => {
           <span v-if="item.id === heroId && heroPosition !== 'none'" class="cm-star">★</span>
           {{ item.file.name }}
         </button>
-        <button class="cm-chip-x" :aria-label="`Remove ${item.file.name}`" @click="remove(item.id)">
+        <button class="cm-chip-x" :aria-label="`${item.file.name} を削除`" @click="remove(item.id)">
           ×
         </button>
       </li>
@@ -401,27 +401,27 @@ onBeforeUnmount(() => {
 
     <div class="cm-settings">
       <label class="cm-field">
-        <span class="cm-label">Canvas</span>
-        <select class="cm-input" v-model="ratio" aria-label="Canvas ratio">
+        <span class="cm-label">キャンバス</span>
+        <select class="cm-input" v-model="ratio" aria-label="キャンバスの比率">
           <option v-for="value in RATIOS" :key="value" :value="value">{{ value }}</option>
         </select>
       </label>
 
       <label class="cm-field cm-field-narrow">
-        <span class="cm-label">Long edge</span>
+        <span class="cm-label">長辺</span>
         <input
           class="cm-input"
           v-model="longEdge"
           type="text"
           inputmode="numeric"
           spellcheck="false"
-          aria-label="Long edge"
+          aria-label="長辺"
         />
       </label>
 
       <label class="cm-field">
-        <span class="cm-label">Layout</span>
-        <select class="cm-input" v-model="mode" aria-label="Layout">
+        <span class="cm-label">レイアウト</span>
+        <select class="cm-input" v-model="mode" aria-label="レイアウト">
           <option v-for="option in LAYOUTS" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
@@ -429,8 +429,8 @@ onBeforeUnmount(() => {
       </label>
 
       <label class="cm-field">
-        <span class="cm-label">Hero</span>
-        <select class="cm-input" v-model="heroPosition" aria-label="Hero position">
+        <span class="cm-label">メイン画像</span>
+        <select class="cm-input" v-model="heroPosition" aria-label="メイン画像の位置">
           <option v-for="option in HERO_POSITIONS" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
@@ -442,13 +442,13 @@ onBeforeUnmount(() => {
         v-model="heroPercent"
         :min="20"
         :max="80"
-        label="Hero size"
+        label="メイン画像のサイズ"
         unit="%"
       />
 
       <label v-if="heroPosition !== 'none'" class="cm-field">
-        <span class="cm-label">Hero fit</span>
-        <select class="cm-input" v-model="heroFit" aria-label="Hero fit">
+        <span class="cm-label">メイン画像の収め方</span>
+        <select class="cm-input" v-model="heroFit" aria-label="メイン画像の収め方">
           <option v-for="option in FITS" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
@@ -456,21 +456,21 @@ onBeforeUnmount(() => {
       </label>
 
       <label class="cm-field">
-        <span class="cm-label">{{ heroPosition === 'none' ? 'Fit' : 'Fit — the rest' }}</span>
-        <select class="cm-input" v-model="cellFit" aria-label="Fit">
+        <span class="cm-label">{{ heroPosition === 'none' ? '収め方' : '収め方 — ほかの画像' }}</span>
+        <select class="cm-input" v-model="cellFit" aria-label="収め方">
           <option v-for="option in FITS" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
         </select>
       </label>
 
-      <StepField v-model="gap" :min="0" :max="60" label="Gap" unit="px" />
+      <StepField v-model="gap" :min="0" :max="60" label="間隔" unit="px" />
 
-      <StepField v-model="padding" :min="0" :max="80" label="Margin" unit="px" />
+      <StepField v-model="padding" :min="0" :max="80" label="余白" unit="px" />
 
       <label class="cm-field">
-        <span class="cm-label">Background</span>
-        <select class="cm-input" v-model="background" aria-label="Background">
+        <span class="cm-label">背景</span>
+        <select class="cm-input" v-model="background" aria-label="背景">
           <option v-for="option in BACKGROUNDS" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
@@ -478,8 +478,8 @@ onBeforeUnmount(() => {
       </label>
 
       <label class="cm-field">
-        <span class="cm-label">Format</span>
-        <select class="cm-input" v-model="format" aria-label="Format">
+        <span class="cm-label">形式</span>
+        <select class="cm-input" v-model="format" aria-label="形式">
           <option v-for="option in FORMATS" :key="option.choice" :value="option.choice">
             {{ option.label }}
           </option>
@@ -491,16 +491,16 @@ onBeforeUnmount(() => {
         v-model="qualityPercent"
         :min="40"
         :max="100"
-        label="Quality"
+        label="画質"
       />
     </div>
 
     <div class="cm-toolbar">
-      <button class="cm-btn cm-btn-main" :disabled="!result || busy" @click="save">Download</button>
+      <button class="cm-btn cm-btn-main" :disabled="!result || busy" @click="save">ダウンロード</button>
       <button class="cm-btn" :disabled="!canShuffle || items.length < 3" @click="shuffle">
-        Shuffle
+        シャッフル
       </button>
-      <button class="cm-btn" :disabled="items.length === 0" @click="clearAll">Clear</button>
+      <button class="cm-btn" :disabled="items.length === 0" @click="clearAll">クリア</button>
       <span v-if="result" class="cm-totals">
         {{ result.size.width }} × {{ result.size.height }} · {{ formatBytes(result.bytes) }}
       </span>
@@ -509,17 +509,16 @@ onBeforeUnmount(() => {
     <p v-if="failure" class="cm-error">{{ failure }}</p>
 
     <div v-if="result" class="cm-preview" :class="{ 'cm-preview-busy': busy }">
-      <img :src="result.url" alt="The collage" />
+      <img :src="result.url" alt="コラージュ" />
     </div>
     <p v-else-if="items.length === 0" class="cm-hint">
-      Drop two or more images to see a collage here.
+      2 枚以上の画像をドロップすると、ここにコラージュが表示されます。
     </p>
 
     <p class="cm-hint">
-      Everything is drawn in this browser; nothing is uploaded. Images keep their aspect ratio in
-      both fits — Cover crops what will not fit the cell, Contain leaves background around it — and
-      the hero can use a different one from the images beside it. Each image is stepped down to its
-      cell rather than resampled in one jump.
+      描画はすべてこのブラウザ内で行われ、何もアップロードされません。どちらの収め方でも画像の縦横比は保たれます。
+      cover はセルに収まらない部分を切り取り、contain は周りに背景を残します。メイン画像には、ほかの画像と
+      違う収め方を指定できます。各画像は一度に縮小せず、段階的にセルの大きさまで縮小されます。
     </p>
   </div>
 </template>

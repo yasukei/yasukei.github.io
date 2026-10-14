@@ -18,7 +18,7 @@ function field(value = 50, overrides: Record<string, unknown> = {}) {
       modelValue: value,
       min: 20,
       max: 80,
-      label: 'Hero size',
+      label: 'メイン画像のサイズ',
       unit: '%',
       'onUpdate:modelValue': (next: number) => wrapper.setProps({ modelValue: next }),
       ...overrides
@@ -56,8 +56,8 @@ describe('StepField', () => {
     it('step by exactly one, which is what the slider cannot do', async () => {
       const wrapper = field(50)
 
-      await wrapper.get('[aria-label="Increase Hero size"]').trigger('click')
-      await wrapper.get('[aria-label="Decrease Hero size"]').trigger('click')
+      await wrapper.get('[aria-label="メイン画像のサイズを増やす"]').trigger('click')
+      await wrapper.get('[aria-label="メイン画像のサイズを減らす"]').trigger('click')
 
       expect(emitted(wrapper)).toEqual([51, 50])
     })
@@ -66,17 +66,17 @@ describe('StepField', () => {
       const top = field(80)
       const bottom = field(20)
 
-      expect(top.get('[aria-label="Increase Hero size"]').attributes('disabled')).toBeDefined()
-      expect(bottom.get('[aria-label="Decrease Hero size"]').attributes('disabled')).toBeDefined()
+      expect(top.get('[aria-label="メイン画像のサイズを増やす"]').attributes('disabled')).toBeDefined()
+      expect(bottom.get('[aria-label="メイン画像のサイズを減らす"]').attributes('disabled')).toBeDefined()
 
-      await top.get('[aria-label="Increase Hero size"]').trigger('click')
+      await top.get('[aria-label="メイン画像のサイズを増やす"]').trigger('click')
       expect(emitted(top)).toEqual([])
     })
 
     it('leaves the other arrow alone at a bound', () => {
       const wrapper = field(80)
 
-      expect(wrapper.get('[aria-label="Decrease Hero size"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.get('[aria-label="メイン画像のサイズを減らす"]').attributes('disabled')).toBeUndefined()
     })
   })
 
@@ -167,7 +167,7 @@ describe('StepField', () => {
   it('labels the slider plainly and the box as its value', () => {
     const wrapper = field()
 
-    expect(wrapper.get('input[type="range"]').attributes('aria-label')).toBe('Hero size')
-    expect(box(wrapper).attributes('aria-label')).toBe('Hero size value')
+    expect(wrapper.get('input[type="range"]').attributes('aria-label')).toBe('メイン画像のサイズ')
+    expect(box(wrapper).attributes('aria-label')).toBe('メイン画像のサイズの値')
   })
 })

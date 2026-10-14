@@ -216,7 +216,7 @@ describe('acceptFiles', () => {
     const { accepted, rejected } = acceptFiles([], [file('notes.pdf', 'application/pdf')])
 
     expect(accepted).toEqual([])
-    expect(rejected).toEqual([{ name: 'notes.pdf', reason: 'Not an image' }])
+    expect(rejected).toEqual([{ name: 'notes.pdf', reason: '画像ではありません' }])
   })
 
   it('names HEIC as the reason, since that is what a phone hands over', () => {
@@ -236,7 +236,7 @@ describe('acceptFiles', () => {
   it('turns away SVG with advice instead of a failed decode', () => {
     const { rejected } = acceptFiles([], [file('logo.svg', 'image/svg+xml')])
 
-    expect(rejected[0].reason).toContain('vector')
+    expect(rejected[0].reason).toContain('ベクター')
   })
 
   it('stops at the limit and says which files were left out', () => {
@@ -250,7 +250,7 @@ describe('acceptFiles', () => {
     const { accepted, rejected } = acceptFiles(held, incoming)
 
     expect(accepted.map((f) => f.name)).toEqual(['x.png', 'y.png'])
-    expect(rejected).toEqual([{ name: 'z.png', reason: `Over the limit of ${MAX_FILES} images` }])
+    expect(rejected).toEqual([{ name: 'z.png', reason: `上限の ${MAX_FILES} 枚を超えています` }])
   })
 
   it('counts only what it actually accepted towards the limit', () => {

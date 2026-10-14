@@ -33,10 +33,10 @@ interface Item {
 }
 
 const MODES: { value: ResizeMode; label: string; unit: string }[] = [
-  { value: 'longest-edge', label: 'Longest edge', unit: 'px' },
-  { value: 'width', label: 'Width', unit: 'px' },
-  { value: 'height', label: 'Height', unit: 'px' },
-  { value: 'percent', label: 'Percent', unit: '%' }
+  { value: 'longest-edge', label: '長辺', unit: 'px' },
+  { value: 'width', label: '幅', unit: 'px' },
+  { value: 'height', label: '高さ', unit: 'px' },
+  { value: 'percent', label: 'パーセント', unit: '%' }
 ]
 
 /** Long enough that typing a four digit number is one run, not four. */
@@ -166,13 +166,13 @@ async function run() {
 
       const target = targetSize(item.source, spec.value, { allowEnlarge: allowEnlarge.value })
       if (target === null) {
-        item.error = 'Enter a size to resize to.'
+        item.error = 'リサイズ後のサイズを入力してください。'
         continue
       }
 
       const plan = stepPlan(item.source, target)
       if (plan.length > 0 && exceedsCanvasLimit(plan[0])) {
-        item.error = 'This image is too large for the browser to redraw.'
+        item.error = 'この画像はブラウザで描き直すには大きすぎます。'
         continue
       }
 
@@ -189,7 +189,7 @@ async function run() {
         bytes: blob.size
       }
     } catch (error) {
-      item.error = error instanceof Error ? error.message : 'This image could not be resized.'
+      item.error = error instanceof Error ? error.message : 'この画像をリサイズできませんでした。'
     } finally {
       release(bitmap)
       item.busy = false
@@ -247,17 +247,17 @@ onBeforeUnmount(() => {
         accept="image/*"
         multiple
         @change="onPick"
-        aria-label="Choose images"
+        aria-label="画像を選択"
       />
-      <strong>Drop images here</strong>
-      <span class="ir-drop-note">or click to choose — up to {{ MAX_FILES }} at a time</span>
+      <strong>ここに画像をドロップ</strong>
+      <span class="ir-drop-note">またはクリックして選択（一度に {{ MAX_FILES }} 枚まで）</span>
     </label>
 
     <div class="ir-settings">
       <template v-if="keepAspect">
         <label class="ir-field">
-          <span class="ir-label">Resize by</span>
-          <select class="ir-input" v-model="mode" aria-label="Resize by">
+          <span class="ir-label">リサイズの基準</span>
+          <select class="ir-input" v-model="mode" aria-label="リサイズの基準">
             <option v-for="option in MODES" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
@@ -265,7 +265,7 @@ onBeforeUnmount(() => {
         </label>
 
         <label class="ir-field ir-field-narrow">
-          <span class="ir-label">Amount</span>
+          <span class="ir-label">サイズ</span>
           <span class="ir-amount">
             <input
               class="ir-input"
@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
               type="text"
               inputmode="numeric"
               spellcheck="false"
-              aria-label="Amount"
+              aria-label="サイズ"
             />
             <span class="ir-unit">{{ unit }}</span>
           </span>
@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
 
       <template v-else>
         <label class="ir-field ir-field-narrow">
-          <span class="ir-label">Width</span>
+          <span class="ir-label">幅</span>
           <span class="ir-amount">
             <input
               class="ir-input"
@@ -290,14 +290,14 @@ onBeforeUnmount(() => {
               type="text"
               inputmode="numeric"
               spellcheck="false"
-              aria-label="Width"
+              aria-label="幅"
             />
             <span class="ir-unit">px</span>
           </span>
         </label>
 
         <label class="ir-field ir-field-narrow">
-          <span class="ir-label">Height</span>
+          <span class="ir-label">高さ</span>
           <span class="ir-amount">
             <input
               class="ir-input"
@@ -305,7 +305,7 @@ onBeforeUnmount(() => {
               type="text"
               inputmode="numeric"
               spellcheck="false"
-              aria-label="Height"
+              aria-label="高さ"
             />
             <span class="ir-unit">px</span>
           </span>
@@ -313,8 +313,8 @@ onBeforeUnmount(() => {
       </template>
 
       <label class="ir-field">
-        <span class="ir-label">Format</span>
-        <select class="ir-input" v-model="format" aria-label="Format">
+        <span class="ir-label">形式</span>
+        <select class="ir-input" v-model="format" aria-label="形式">
           <option v-for="option in OUTPUT_FORMATS" :key="option.choice" :value="option.choice">
             {{ option.label }}
           </option>
@@ -322,7 +322,7 @@ onBeforeUnmount(() => {
       </label>
 
       <label v-if="showQuality" class="ir-field">
-        <span class="ir-label">Quality {{ Math.round(quality * 100) }}</span>
+        <span class="ir-label">画質 {{ Math.round(quality * 100) }}</span>
         <input
           class="ir-range"
           v-model.number="quality"
@@ -330,19 +330,19 @@ onBeforeUnmount(() => {
           min="0.4"
           max="1"
           step="0.05"
-          aria-label="Quality"
+          aria-label="画質"
         />
       </label>
     </div>
 
     <label class="ir-check">
-      <input type="checkbox" v-model="keepAspect" aria-label="Keep aspect ratio" />
-      Keep aspect ratio (off: set width and height directly, stretching the image to fit)
+      <input type="checkbox" v-model="keepAspect" aria-label="縦横比を保つ" />
+      縦横比を保つ（オフ：幅と高さを直接指定し、画像を引き伸ばして合わせます）
     </label>
 
     <label class="ir-check">
-      <input type="checkbox" v-model="allowEnlarge" aria-label="Allow enlarging" />
-      Allow enlarging (off: an image smaller than the target is left alone)
+      <input type="checkbox" v-model="allowEnlarge" aria-label="拡大を許可" />
+      拡大を許可（オフ：指定より小さい画像はそのままにします）
     </label>
 
     <ul v-if="rejected.length" class="ir-rejected">
@@ -369,16 +369,16 @@ onBeforeUnmount(() => {
             <span
               v-if="item.source && item.result && isEnlargement(item.source, item.result.size)"
               class="ir-warn"
-              >enlarged</span
+              >拡大</span
             >
           </div>
-          <div v-else class="ir-numbers">Working…</div>
+          <div v-else class="ir-numbers">処理中…</div>
         </div>
         <div class="ir-actions">
           <button class="ir-btn" :disabled="!item.result || item.busy" @click="save(item)">
-            Download
+            ダウンロード
           </button>
-          <button class="ir-remove" :aria-label="`Remove ${item.file.name}`" @click="remove(item.id)">
+          <button class="ir-remove" :aria-label="`${item.file.name} を削除`" @click="remove(item.id)">
             ×
           </button>
         </div>
@@ -387,9 +387,9 @@ onBeforeUnmount(() => {
 
     <div v-if="items.length" class="ir-toolbar">
       <button class="ir-btn ir-btn-main" :disabled="done.length === 0" @click="saveAll">
-        Download {{ done.length > 1 ? `all ${done.length}` : 'it' }}
+        {{ done.length > 1 ? `${done.length} 枚すべてダウンロード` : '画像をダウンロード' }}
       </button>
-      <button class="ir-btn" @click="clearAll">Clear</button>
+      <button class="ir-btn" @click="clearAll">クリア</button>
       <span v-if="done.length" class="ir-totals">
         {{ formatBytes(totals.before) }} → {{ formatBytes(totals.after) }}
         <em class="ir-delta">{{ totals.delta }}</em>
@@ -397,9 +397,9 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="ir-hint">
-      Everything happens in this browser — no image is uploaded anywhere. Large reductions are done
-      in repeated halvings rather than one pass, which keeps fine detail from breaking up. Note that
-      re-encoding drops EXIF data, including the camera settings and any location the photo carried.
+      処理はすべてこのブラウザ内で行われ、画像がどこかにアップロードされることはありません。大きく縮小するときは
+      一度に縮めず半分ずつ段階的に縮小するので、細部が崩れにくくなります。なお、再エンコードによって
+      EXIF 情報（カメラの設定や写真に含まれる位置情報など）は削除されます。
     </p>
   </div>
 </template>

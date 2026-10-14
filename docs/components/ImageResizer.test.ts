@@ -128,7 +128,7 @@ describe('ImageResizer', () => {
 
     expect(rows(wrapper)).toHaveLength(3)
     expect(wrapper.findAll('.ir-thumb img')).toHaveLength(3)
-    expect(wrapper.get('.ir-btn-main').text()).toBe('Download all 3')
+    expect(wrapper.get('.ir-btn-main').text()).toBe('3 枚すべてダウンロード')
   })
 
   it('stops at ten and says which files it left out', async () => {
@@ -138,14 +138,14 @@ describe('ImageResizer', () => {
 
     expect(rows(wrapper)).toHaveLength(10)
     expect(wrapper.get('.ir-rejected').text()).toContain('shot-10.jpg')
-    expect(wrapper.get('.ir-rejected').text()).toContain('Over the limit of 10')
+    expect(wrapper.get('.ir-rejected').text()).toContain('上限の 10 枚')
   })
 
   it('explains a file it cannot take instead of dropping it silently', async () => {
     const wrapper = await withImages([image('notes.pdf', 'application/pdf')])
 
     expect(rows(wrapper)).toHaveLength(0)
-    expect(wrapper.get('.ir-rejected').text()).toContain('Not an image')
+    expect(wrapper.get('.ir-rejected').text()).toContain('画像ではありません')
   })
 
   it('accepts files chosen through the picker as well as dropped ones', async () => {
@@ -167,7 +167,7 @@ describe('ImageResizer', () => {
       vi.useFakeTimers()
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
 
-      await wrapper.get('select[aria-label="Resize by"]').setValue('percent')
+      await wrapper.get('select[aria-label="リサイズの基準"]').setValue('percent')
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
 
@@ -184,7 +184,7 @@ describe('ImageResizer', () => {
       expect(createImageBitmap).toHaveBeenCalledOnce()
       expect(close).toHaveBeenCalledOnce()
 
-      await wrapper.get('select[aria-label="Resize by"]').setValue('percent')
+      await wrapper.get('select[aria-label="リサイズの基準"]').setValue('percent')
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
 
@@ -196,7 +196,7 @@ describe('ImageResizer', () => {
       vi.useFakeTimers()
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
 
-      await wrapper.get('input[aria-label="Amount"]').setValue('800')
+      await wrapper.get('input[aria-label="サイズ"]').setValue('800')
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
 
@@ -206,10 +206,10 @@ describe('ImageResizer', () => {
     it('keeps a separate amount per mode', async () => {
       vi.useFakeTimers()
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
-      const amount = wrapper.get('input[aria-label="Amount"]')
+      const amount = wrapper.get('input[aria-label="サイズ"]')
       expect((amount.element as HTMLInputElement).value).toBe('1600')
 
-      await wrapper.get('select[aria-label="Resize by"]').setValue('percent')
+      await wrapper.get('select[aria-label="リサイズの基準"]').setValue('percent')
       await vi.advanceTimersByTimeAsync(300)
 
       // 1600 would mean 1600% in this mode.
@@ -223,38 +223,38 @@ describe('ImageResizer', () => {
 
       expect(wrapper.get('.ir-numbers').text()).toContain('1000 × 750 → 1000 × 750')
 
-      await wrapper.get('input[aria-label="Allow enlarging"]').setValue(true)
+      await wrapper.get('input[aria-label="拡大を許可"]').setValue(true)
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
 
       expect(wrapper.get('.ir-numbers').text()).toContain('→ 1600 × 1200')
-      expect(wrapper.get('.ir-warn').text()).toBe('enlarged')
+      expect(wrapper.get('.ir-warn').text()).toBe('拡大')
     })
 
     it('stretches to an exact width and height once the aspect ratio is let go', async () => {
       vi.useFakeTimers()
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
-      expect(wrapper.find('input[aria-label="Width"]').exists()).toBe(false)
+      expect(wrapper.find('input[aria-label="幅"]').exists()).toBe(false)
 
-      await wrapper.get('input[aria-label="Keep aspect ratio"]').setValue(false)
-      await wrapper.get('input[aria-label="Width"]').setValue('300')
-      await wrapper.get('input[aria-label="Height"]').setValue('300')
+      await wrapper.get('input[aria-label="縦横比を保つ"]').setValue(false)
+      await wrapper.get('input[aria-label="幅"]').setValue('300')
+      await wrapper.get('input[aria-label="高さ"]').setValue('300')
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
 
-      expect(wrapper.find('select[aria-label="Resize by"]').exists()).toBe(false)
+      expect(wrapper.find('select[aria-label="リサイズの基準"]').exists()).toBe(false)
       expect(wrapper.get('.ir-numbers').text()).toContain('4000 × 3000 → 300 × 300')
     })
 
     it('offers quality only for a format that has any', async () => {
       vi.useFakeTimers()
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
-      expect(wrapper.find('input[aria-label="Quality"]').exists()).toBe(true)
+      expect(wrapper.find('input[aria-label="画質"]').exists()).toBe(true)
 
-      await wrapper.get('select[aria-label="Format"]').setValue('image/png')
+      await wrapper.get('select[aria-label="形式"]').setValue('image/png')
       await vi.advanceTimersByTimeAsync(300)
 
-      expect(wrapper.find('input[aria-label="Quality"]').exists()).toBe(false)
+      expect(wrapper.find('input[aria-label="画質"]').exists()).toBe(false)
     })
   })
 
@@ -271,7 +271,7 @@ describe('ImageResizer', () => {
       vi.useFakeTimers()
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
 
-      await wrapper.get('select[aria-label="Format"]').setValue('image/webp')
+      await wrapper.get('select[aria-label="形式"]').setValue('image/webp')
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
       await wrapper.get('.ir-actions .ir-btn').trigger('click')
@@ -306,7 +306,7 @@ describe('ImageResizer', () => {
       vi.useFakeTimers()
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
 
-      await wrapper.get('input[aria-label="Amount"]').setValue('800')
+      await wrapper.get('input[aria-label="サイズ"]').setValue('800')
       await vi.advanceTimersByTimeAsync(300)
       await flushPromises()
 
@@ -346,7 +346,7 @@ describe('ImageResizer', () => {
 
       const wrapper = await withImages([image('photo.jpg', 'image/jpeg')])
 
-      expect(wrapper.get('.ir-error').text()).toContain('could not encode')
+      expect(wrapper.get('.ir-error').text()).toContain('エンコードできませんでした')
     })
 
     it('reports an image the browser will not decode', async () => {
@@ -372,7 +372,7 @@ describe('ImageResizer', () => {
 
       expect(wrapper.findAll('.ir-error')).toHaveLength(1)
       expect(wrapper.findAll('.ir-thumb img')).toHaveLength(1)
-      expect(wrapper.get('.ir-btn-main').text()).toBe('Download it')
+      expect(wrapper.get('.ir-btn-main').text()).toBe('画像をダウンロード')
     })
 
     it('refuses a source too large for a canvas to redraw', async () => {
@@ -380,7 +380,7 @@ describe('ImageResizer', () => {
 
       const wrapper = await withImages([image('huge.png', 'image/png')])
 
-      expect(wrapper.get('.ir-error').text()).toContain('too large')
+      expect(wrapper.get('.ir-error').text()).toContain('大きすぎます')
     })
   })
 })

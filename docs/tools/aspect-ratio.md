@@ -2,6 +2,6 @@
 import AspectRatioCalculator from '../components/AspectRatioCalculator.vue'
 </script>
 
-# Aspect Ratio Calculator
+# アスペクト比計算
 
 <AspectRatioCalculator />

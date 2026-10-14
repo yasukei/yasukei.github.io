@@ -96,7 +96,7 @@ describe('KanaConverter', () => {
 
     await hiragana.setValue('あいうえお')
 
-    expect(wrapper.get('.kc-count').text()).toBe('5 chars')
+    expect(wrapper.get('.kc-count').text()).toBe('5 文字')
   })
 
   describe('copy', () => {
@@ -131,8 +131,8 @@ describe('KanaConverter', () => {
       await copyHiragana.trigger('click')
       await wrapper.vm.$nextTick()
 
-      expect(copyHiragana.text()).toBe('Copied')
-      expect(copyKatakana.text()).toBe('Copy')
+      expect(copyHiragana.text()).toBe('コピーしました')
+      expect(copyKatakana.text()).toBe('コピー')
     })
 
     it('survives a clipboard the browser refuses', async () => {
@@ -144,7 +144,7 @@ describe('KanaConverter', () => {
       await wrapper.vm.$nextTick()
 
       // No unhandled rejection, and no false confirmation.
-      expect(copyHiragana.text()).toBe('Copy')
+      expect(copyHiragana.text()).toBe('コピー')
     })
   })
 })

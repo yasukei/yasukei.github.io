@@ -56,15 +56,15 @@ async function copy(kind: Pane) {
 <template>
   <div class="kc-root">
     <div class="kc-toolbar">
-      <button class="kc-btn" @click="clear">Clear</button>
-      <span class="kc-count">{{ count }} chars</span>
+      <button class="kc-btn" @click="clear">クリア</button>
+      <span class="kc-count">{{ count }} 文字</span>
     </div>
     <div class="kc-panels">
       <div class="kc-pane">
         <div class="kc-pane-head">
-          <span class="kc-pane-label">Hiragana / ひらがな</span>
+          <span class="kc-pane-label">ひらがな</span>
           <button class="kc-copy" @click="copy('hiragana')">
-            {{ copied === 'hiragana' ? 'Copied' : 'Copy' }}
+            {{ copied === 'hiragana' ? 'コピーしました' : 'コピー' }}
           </button>
         </div>
         <textarea
@@ -77,9 +77,9 @@ async function copy(kind: Pane) {
       </div>
       <div class="kc-pane">
         <div class="kc-pane-head">
-          <span class="kc-pane-label">Katakana / カタカナ</span>
+          <span class="kc-pane-label">カタカナ</span>
           <button class="kc-copy" @click="copy('katakana')">
-            {{ copied === 'katakana' ? 'Copied' : 'Copy' }}
+            {{ copied === 'katakana' ? 'コピーしました' : 'コピー' }}
           </button>
         </div>
         <textarea
@@ -92,8 +92,8 @@ async function copy(kind: Pane) {
       </div>
     </div>
     <p class="kc-hint">
-      Both panes convert as you type — edit either side. Kanji, latin letters and
-      punctuation are left as they are.
+      入力するそばから変換されます。どちら側でも編集できます。漢字・英字・記号は
+      そのまま残ります。
     </p>
   </div>
 </template>

@@ -25,15 +25,15 @@ export interface Preset {
 }
 
 export const PRESETS: Preset[] = [
-  { label: '16:9', ratio: { width: 16, height: 9 }, note: 'Widescreen video, 1080p and 4K' },
-  { label: '4:3', ratio: { width: 4, height: 3 }, note: 'Classic displays, older video' },
-  { label: '3:2', ratio: { width: 3, height: 2 }, note: '35mm film, most DSLR sensors' },
-  { label: '21:9', ratio: { width: 21, height: 9 }, note: 'Ultrawide monitors' },
-  { label: '1:1', ratio: { width: 1, height: 1 }, note: 'Square' },
-  { label: '9:16', ratio: { width: 9, height: 16 }, note: 'Vertical video, phone screens' },
-  { label: '5:4', ratio: { width: 5, height: 4 }, note: 'Large format prints' },
-  { label: '2.39:1', ratio: { width: 2.39, height: 1 }, note: 'Anamorphic widescreen cinema' },
-  { label: '1.414:1', ratio: { width: 1.414, height: 1 }, note: 'ISO 216 paper, A4 and friends' }
+  { label: '16:9', ratio: { width: 16, height: 9 }, note: 'ワイドスクリーン動画（1080p・4K）' },
+  { label: '4:3', ratio: { width: 4, height: 3 }, note: '従来のディスプレイ、古い映像' },
+  { label: '3:2', ratio: { width: 3, height: 2 }, note: '35mm フィルム、多くの一眼レフのセンサー' },
+  { label: '21:9', ratio: { width: 21, height: 9 }, note: 'ウルトラワイドモニター' },
+  { label: '1:1', ratio: { width: 1, height: 1 }, note: '正方形' },
+  { label: '9:16', ratio: { width: 9, height: 16 }, note: '縦型動画、スマートフォンの画面' },
+  { label: '5:4', ratio: { width: 5, height: 4 }, note: '大判プリント' },
+  { label: '2.39:1', ratio: { width: 2.39, height: 1 }, note: 'アナモルフィック方式のワイドスクリーン映画' },
+  { label: '1.414:1', ratio: { width: 1.414, height: 1 }, note: 'ISO 216 の用紙（A4 など）' }
 ]
 
 /**
