@@ -55,8 +55,8 @@ const BACKGROUNDS: { value: string; label: string }[] = [
   { value: 'transparent', label: '透明' }
 ]
 const FITS: { value: Fit; label: string }[] = [
-  { value: 'cover', label: 'カバー — 枠を埋め、はみ出しは切り取る' },
-  { value: 'contain', label: 'コンテイン — 全体を表示' }
+  { value: 'cover', label: 'cover — 枠を埋め、はみ出しは切り取る' },
+  { value: 'contain', label: 'contain — 全体を表示' }
 ]
 const FORMATS: { choice: OutputChoice; label: string }[] = [
   { choice: 'image/png', label: 'PNG' },
@@ -517,7 +517,7 @@ onBeforeUnmount(() => {
 
     <p class="cm-hint">
       描画はすべてこのブラウザ内で行われ、何もアップロードされません。どちらの収め方でも画像の縦横比は保たれます。
-      カバーはセルに収まらない部分を切り取り、コンテインは周りに背景を残します。メイン画像には、ほかの画像と
+      cover はセルに収まらない部分を切り取り、contain は周りに背景を残します。メイン画像には、ほかの画像と
       違う収め方を指定できます。各画像は一度に縮小せず、段階的にセルの大きさまで縮小されます。
     </p>
   </div>
