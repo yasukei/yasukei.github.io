@@ -74,6 +74,30 @@ describe('BehaviorTracker', () => {
     wrapper.unmount()
   })
 
+  it('puts the sensor permission button right above the sensor section', async () => {
+    // A browser that hides the sensors until asked, as iOS does.
+    vi.stubGlobal('DeviceOrientationEvent', Object.assign(class {}, { requestPermission: vi.fn() }))
+    try {
+      const wrapper = mount(BehaviorTracker)
+      await tick()
+
+      const button = wrapper.get('.bt-btn')
+      expect(button.element.nextElementSibling?.getAttribute('data-section')).toBe('sensors')
+      wrapper.unmount()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('has no button where the sensors need no asking', async () => {
+    // happy-dom has no DeviceOrientationEvent at all, like a desktop Firefox.
+    const wrapper = mount(BehaviorTracker)
+    await tick()
+
+    expect(wrapper.find('.bt-btn').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('stops listening and ticking once it is gone', async () => {
     const wrapper = mount(BehaviorTracker)
     await tick()

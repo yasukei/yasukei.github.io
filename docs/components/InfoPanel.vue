@@ -44,25 +44,29 @@ async function copyJson() {
 
     <p v-if="sections.length === 0" class="bi-loading">読み込み中…</p>
 
-    <section v-for="section in sections" :key="section.id" class="bi-section" :data-section="section.id">
-      <div class="bi-section-title">{{ section.title }}</div>
-      <div v-for="row in section.rows" :key="row.label" class="bi-row">
-        <div class="bi-label">
-          <div class="bi-label-text">{{ row.label }}</div>
-          <code v-if="row.api" class="bi-api">{{ row.api }}</code>
+    <template v-for="section in sections" :key="section.id">
+      <!-- e.g. #before-sensors: controls that act on one section, placed right above it. -->
+      <slot :name="`before-${section.id}`" />
+      <section class="bi-section" :data-section="section.id">
+        <div class="bi-section-title">{{ section.title }}</div>
+        <div v-for="row in section.rows" :key="row.label" class="bi-row">
+          <div class="bi-label">
+            <div class="bi-label-text">{{ row.label }}</div>
+            <code v-if="row.api" class="bi-api">{{ row.api }}</code>
+          </div>
+          <div class="bi-value">
+            <span v-if="isUnavailable(row.value)" class="bi-na">{{ row.missing ?? '取得できない (このブラウザは未対応)' }}</span>
+            <ul v-else-if="Array.isArray(row.value)" class="bi-list">
+              <li v-for="(item, i) in row.value" :key="i">{{ item }}</li>
+            </ul>
+            <span v-else-if="row.value === ''" class="bi-na">(空文字)</span>
+            <span v-else class="bi-text">{{ row.value }}</span>
+            <img v-if="row.image" :src="row.image" class="bi-image" :alt="`${row.label}の画像`" />
+            <div v-if="row.note" class="bi-note">{{ row.note }}</div>
+          </div>
         </div>
-        <div class="bi-value">
-          <span v-if="isUnavailable(row.value)" class="bi-na">{{ row.missing ?? '取得できない (このブラウザは未対応)' }}</span>
-          <ul v-else-if="Array.isArray(row.value)" class="bi-list">
-            <li v-for="(item, i) in row.value" :key="i">{{ item }}</li>
-          </ul>
-          <span v-else-if="row.value === ''" class="bi-na">(空文字)</span>
-          <span v-else class="bi-text">{{ row.value }}</span>
-          <img v-if="row.image" :src="row.image" class="bi-image" :alt="`${row.label}の画像`" />
-          <div v-if="row.note" class="bi-note">{{ row.note }}</div>
-        </div>
-      </div>
-    </section>
+      </section>
+    </template>
   </div>
 </template>
 

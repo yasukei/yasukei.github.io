@@ -174,8 +174,10 @@ onBeforeUnmount(() => {
           @input="log.input(($event.target as HTMLTextAreaElement).value)"
         />
       </label>
-      <button v-if="sensorsNeedAsking" class="bt-btn" @click="askSensors">傾きセンサーの許可をリクエスト</button>
     </div>
+    <template #before-sensors>
+      <button v-if="sensorsNeedAsking" class="bt-btn" @click="askSensors">傾き・加速度センサーの許可をリクエスト</button>
+    </template>
   </InfoPanel>
 </template>
 
@@ -232,7 +234,7 @@ onBeforeUnmount(() => {
 }
 
 .bt-btn {
-  justify-self: start;
+  align-self: flex-start;
   padding: 4px 12px;
   border: 1px solid var(--vp-c-border);
   border-radius: 4px;
