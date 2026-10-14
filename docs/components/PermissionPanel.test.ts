@@ -1,0 +1,520 @@
+// @vitest-environment happy-dom
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import PermissionPanel from './PermissionPanel.vue'
+
+/**
+ * What each row says is covered in docs/lib/permission-info.test.ts. Here it
+ * is the wiring: nothing is requested before a button is pressed, the answer
+ * (or the refusal) lands in the table, and the camera and microphone are
+ * released when stopped or when the page is left.
+ */
+
+function valueOf(wrapper: ReturnType<typeof mount>, label: string, section?: string): string {
+  const scope = section ? wrapper.get(`[data-section="${section}"]`) : wrapper
+  const row = scope.findAll('.bi-row').find((r) => r.get('.bi-label-text').text() === label)
+  if (!row) throw new Error(`no row "${label}"`)
+  // Without the note under it, which has its own wording.
+  return row.get('.bi-text, .bi-list, .bi-na').text()
+}
+
+function button(wrapper: ReturnType<typeof mount>, text: string) {
+  const found = wrapper.findAll('button').find((b) => b.text() === text)
+  if (!found) throw new Error(`no button "${text}"`)
+  return found
+}
+
+function fakeTrack(label: string, settings: Record<string, unknown>) {
+  return {
+    label,
+    stop: vi.fn(),
+    getSettings: () => settings,
+    getCapabilities: () => ({ width: { max: 1920 }, height: { max: 1080 } }),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn()
+  }
+}
+
+/** Has to be a MediaStream, or a <video> refuses it as its srcObject. */
+function fakeStream(video?: ReturnType<typeof fakeTrack>, audio?: ReturnType<typeof fakeTrack>) {
+  const videos = video ? [video] : []
+  const audios = audio ? [audio] : []
+  return Object.assign(new MediaStream(), {
+    getVideoTracks: () => videos,
+    getAudioTracks: () => audios,
+    getTracks: () => [...videos, ...audios]
+  })
+}
+
+/** Rejects like a browser does: with a DOMException-like error carrying a name. */
+function rejection(name: string) {
+  return Object.assign(new Error(name), { name })
+}
+
+describe('PermissionPanel', () => {
+  const getCurrentPosition = vi.fn()
+  const getUserMedia = vi.fn()
+  const enumerateDevices = vi.fn()
+  const query = vi.fn()
+
+  beforeEach(() => {
+    getCurrentPosition.mockReset()
+    getUserMedia.mockReset()
+    enumerateDevices.mockReset().mockResolvedValue([])
+    query.mockReset().mockResolvedValue({ state: 'prompt', addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    vi.stubGlobal('navigator', {
+      geolocation: { getCurrentPosition },
+      mediaDevices: { getUserMedia, enumerateDevices, addEventListener: vi.fn(), removeEventListener: vi.fn() },
+      permissions: { query }
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('asks for nothing until a button is pressed', async () => {
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+
+    expect(getCurrentPosition).not.toHaveBeenCalled()
+    expect(getUserMedia).not.toHaveBeenCalled()
+    expect(wrapper.findAll('.bi-section').map((s) => s.attributes('data-section'))).toEqual([
+      'geolocation',
+      'camera',
+      'microphone',
+      'device-names',
+      'sensors'
+    ])
+    expect(valueOf(wrapper, '緯度')).toContain('未取得')
+    wrapper.unmount()
+  })
+
+  it('reads the permission state and the device list without asking', async () => {
+    enumerateDevices.mockResolvedValue([{ kind: 'videoinput', label: '', deviceId: '' }])
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+
+    expect(valueOf(wrapper, '許可の状態', 'geolocation')).toContain('prompt')
+    expect(valueOf(wrapper, 'カメラの名前')).toContain('名前は空')
+    wrapper.unmount()
+  })
+
+  describe('position', () => {
+    it('shows the position that was given', async () => {
+      getCurrentPosition.mockImplementation((ok) =>
+        ok({
+          coords: { latitude: 35.1, longitude: 139.2, accuracy: 15, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+          timestamp: 0
+        })
+      )
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, '緯度')).toBe('35.100000')
+      expect(valueOf(wrapper, '経度')).toBe('139.200000')
+      expect(valueOf(wrapper, '誤差の範囲')).toBe('15 m')
+      expect(button(wrapper, '現在地をもう一度取得').exists()).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('shows that it was refused', async () => {
+      getCurrentPosition.mockImplementation((_, fail) => fail({ code: 1 }))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, '緯度')).toContain('許可されなかった')
+      // Can be tried again after a refusal.
+      expect(button(wrapper, '現在地の許可をリクエスト').attributes('disabled')).toBeUndefined()
+      wrapper.unmount()
+    })
+
+    it('can be asked again while the dialog seems open, as Firefox never answers a closed one', async () => {
+      getCurrentPosition.mockImplementation(() => {})
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, '緯度')).toContain('待っています')
+      expect(button(wrapper, '現在地の許可をリクエスト').attributes('disabled')).toBeUndefined()
+
+      getCurrentPosition.mockImplementation((ok) =>
+        ok({
+          coords: { latitude: 1, longitude: 2, accuracy: 3, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+          timestamp: 0
+        })
+      )
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, '緯度')).toBe('1.000000')
+      wrapper.unmount()
+    })
+
+    it('keeps the answer of the later request when the earlier one comes back after it', async () => {
+      const answers: ((fail: boolean) => void)[] = []
+      getCurrentPosition.mockImplementation((ok, fail) =>
+        answers.push((refuse) =>
+          refuse
+            ? fail({ code: 1 })
+            : ok({
+                coords: { latitude: 5, longitude: 6, accuracy: 7, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+                timestamp: 0
+              })
+        )
+      )
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+
+      answers[1](false)
+      await flushPromises()
+      answers[0](true)
+      await flushPromises()
+
+      expect(valueOf(wrapper, '緯度')).toBe('5.000000')
+      wrapper.unmount()
+    })
+  })
+
+  describe('camera', () => {
+    it('shows the camera it got, and lets go of it when stopped', async () => {
+      const track = fakeTrack('Integrated Camera', { width: 640, height: 480, frameRate: 30 })
+      getUserMedia.mockResolvedValue(fakeStream(track))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(getUserMedia).toHaveBeenCalledWith({ video: true })
+      expect(valueOf(wrapper, '使っているカメラ')).toBe('Integrated Camera')
+      expect(valueOf(wrapper, '映像の大きさ')).toBe('640 × 480')
+      expect(valueOf(wrapper, '出せる最大の大きさ')).toBe('1920 × 1080')
+
+      await button(wrapper, 'カメラを止める').trigger('click')
+
+      expect(track.stop).toHaveBeenCalled()
+      expect(valueOf(wrapper, '使っているカメラ')).toContain('未取得')
+      wrapper.unmount()
+    })
+
+    it('says when there is no camera', async () => {
+      getUserMedia.mockRejectedValue(rejection('NotFoundError'))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, '映像の取得')).toContain('見つからなかった')
+      wrapper.unmount()
+    })
+
+    it('names the devices once the stream was allowed', async () => {
+      const track = fakeTrack('Logitech C920', {})
+      getUserMedia.mockResolvedValue(fakeStream(track))
+      enumerateDevices.mockResolvedValue([{ kind: 'videoinput', label: 'Logitech C920', deviceId: 'abc' }])
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, 'カメラの名前')).toBe('Logitech C920')
+      wrapper.unmount()
+    })
+
+    it('releases the camera when the page is left', async () => {
+      const track = fakeTrack('cam', {})
+      getUserMedia.mockResolvedValue(fakeStream(track))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      wrapper.unmount()
+
+      expect(track.stop).toHaveBeenCalled()
+    })
+
+    it('can be asked again while the dialog seems open, and lets go of the earlier answer', async () => {
+      const first = fakeTrack('first', {})
+      const second = fakeTrack('second', {})
+      const allow: ((stream: unknown) => void)[] = []
+      getUserMedia.mockImplementation(() => new Promise((resolve) => allow.push(resolve)))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+      expect(button(wrapper, 'カメラの許可をリクエスト').attributes('disabled')).toBeUndefined()
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+
+      allow[1](fakeStream(second))
+      await flushPromises()
+      allow[0](fakeStream(first))
+      await flushPromises()
+
+      expect(valueOf(wrapper, '使っているカメラ')).toBe('second')
+      expect(first.stop).toHaveBeenCalled()
+      expect(second.stop).not.toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('lets go of a camera that arrives after the page was left', async () => {
+      const track = fakeTrack('cam', {})
+      let allow: (stream: unknown) => void = () => {}
+      getUserMedia.mockReturnValue(new Promise((resolve) => (allow = resolve)))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+
+      wrapper.unmount()
+      allow(fakeStream(track))
+      await flushPromises()
+
+      expect(track.stop).toHaveBeenCalled()
+    })
+  })
+
+  describe('microphone', () => {
+    it('shows the microphone it got, and stops it', async () => {
+      const track = fakeTrack('Built-in Microphone', { sampleRate: 48000, channelCount: 1 })
+      getUserMedia.mockResolvedValue(fakeStream(undefined, track))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'マイクの許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(getUserMedia).toHaveBeenCalledWith({ audio: true })
+      expect(valueOf(wrapper, '使っているマイク')).toBe('Built-in Microphone')
+      expect(valueOf(wrapper, 'サンプリングレート')).toBe('48000 Hz')
+
+      await button(wrapper, 'マイクを止める').trigger('click')
+
+      expect(track.stop).toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('shows that it was refused', async () => {
+      getUserMedia.mockRejectedValue(rejection('NotAllowedError'))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'マイクの許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, '音声の取得')).toContain('許可されなかった')
+      wrapper.unmount()
+    })
+  })
+
+  describe('motion sensors', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    /** A browser that hides the sensors until asked, as iOS and now Chromium do. */
+    function sensorsAnswer(answer: string) {
+      const requestPermission = vi.fn().mockResolvedValue(answer)
+      vi.stubGlobal('DeviceOrientationEvent', Object.assign(class {}, { requestPermission }))
+      vi.stubGlobal('DeviceMotionEvent', Object.assign(class {}, { requestPermission }))
+      return requestPermission
+    }
+
+    function orient(alpha: number, timeStamp: number) {
+      const event = Object.assign(new Event('deviceorientation'), { alpha, beta: 2, gamma: 3 })
+      Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+      window.dispatchEvent(event)
+    }
+
+    const buttonText = '傾き・加速度センサーの許可をリクエスト'
+
+    it('puts the button right above the sensor section', async () => {
+      sensorsAnswer('granted')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(button(wrapper, buttonText).element.parentElement?.nextElementSibling?.getAttribute('data-section')).toBe(
+        'sensors'
+      )
+      wrapper.unmount()
+    })
+
+    it('has no button where the sensors need no asking', async () => {
+      // happy-dom has no DeviceOrientationEvent at all, like a desktop Firefox.
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(wrapper.findAll('button').some((b) => b.text() === buttonText)).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('shows readings that arrive without being asked for', async () => {
+      const wrapper = mount(PermissionPanel)
+      orient(10, 0)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(valueOf(wrapper, '傾き')).toBe('α 10.0° / β 2.0° / γ 3.0°')
+      wrapper.unmount()
+    })
+
+    it('redraws the table only so often, and ends on the last reading', async () => {
+      const wrapper = mount(PermissionPanel)
+      orient(10, 0)
+      orient(11, 50)
+      orient(12, 100)
+      await vi.advanceTimersByTimeAsync(0)
+      // The first at once; the others are held back.
+      expect(valueOf(wrapper, '傾き')).toMatch(/^α 10\.0°/)
+
+      // Then the sensor goes quiet, as when the phone is put down.
+      await vi.advanceTimersByTimeAsync(150)
+      expect(valueOf(wrapper, '傾き')).toMatch(/^α 12\.0°/)
+      wrapper.unmount()
+    })
+
+    it('shows a reading that comes after the quiet straight away', async () => {
+      const wrapper = mount(PermissionPanel)
+      orient(10, 0)
+      orient(12, 400)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(valueOf(wrapper, '傾き')).toMatch(/^α 12\.0°/)
+      wrapper.unmount()
+    })
+
+    it('ignores an event without any reading, as a desktop sends', async () => {
+      const wrapper = mount(PermissionPanel)
+      window.dispatchEvent(Object.assign(new Event('deviceorientation'), { alpha: null, beta: null, gamma: null }))
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(valueOf(wrapper, '傾き')).toContain('イベントが届いていません')
+      wrapper.unmount()
+    })
+
+    it('asks for both sensors, and keeps the button after a desktop says yes and stays silent', async () => {
+      const requestPermission = sensorsAnswer('granted')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await button(wrapper, buttonText).trigger('click')
+      expect(requestPermission).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(wrapper.get('.pp-status').text()).toMatch(/センサーが付いていない/)
+      expect(button(wrapper, buttonText).attributes('disabled')).toBeUndefined()
+      wrapper.unmount()
+    })
+
+    it('says so when readings arrive', async () => {
+      sensorsAnswer('granted')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await button(wrapper, buttonText).trigger('click')
+      orient(1, 0)
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(wrapper.get('.pp-status').text()).toBe('許可されました。')
+      wrapper.unmount()
+    })
+
+    it('says so when refused', async () => {
+      sensorsAnswer('denied')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await button(wrapper, buttonText).trigger('click')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(wrapper.get('.pp-status').text()).toBe('許可されませんでした。')
+      wrapper.unmount()
+    })
+
+    it('drops a reading that was held back when it is gone', async () => {
+      const wrapper = mount(PermissionPanel)
+      // Let the first lookups settle, so that only a sensor timer could be left.
+      await vi.advanceTimersByTimeAsync(0)
+      orient(10, 0)
+      orient(11, 50)
+      expect(vi.getTimerCount()).toBe(1)
+      wrapper.unmount()
+
+      // Nothing left to fire: the held-back reading has nowhere to go.
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('stops listening once it is gone', async () => {
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      const remove = vi.spyOn(window, 'removeEventListener')
+      wrapper.unmount()
+
+      expect(remove.mock.calls.map((c) => c[0])).toEqual(expect.arrayContaining(['deviceorientation', 'devicemotion']))
+    })
+  })
+
+  it('follows a change of permission made in the browser settings', async () => {
+    // One status object serves all three names, so each of them listens to it.
+    const listeners: (() => void)[] = []
+    const status = {
+      state: 'prompt',
+      addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+      removeEventListener: vi.fn()
+    }
+    query.mockResolvedValue(status)
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+    expect(valueOf(wrapper, '許可の状態', 'geolocation')).toContain('prompt')
+
+    status.state = 'granted'
+    for (const fn of listeners) fn()
+    await flushPromises()
+
+    expect(valueOf(wrapper, '許可の状態', 'geolocation')).toContain('granted')
+    wrapper.unmount()
+  })
+
+  it('keeps the newest device list when an older listing answers late', async () => {
+    const lists: ((devices: unknown[]) => void)[] = []
+    enumerateDevices.mockImplementation(() => new Promise((resolve) => lists.push(resolve)))
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+    // A second listing, as a plugged-in camera or a press of 再取得 starts.
+    await button(wrapper, '再取得').trigger('click')
+
+    lists[1]([{ kind: 'videoinput', label: 'New Camera', deviceId: 'n' }])
+    await flushPromises()
+    lists[0]([{ kind: 'videoinput', label: 'Old Camera', deviceId: 'o' }])
+    await flushPromises()
+
+    expect(valueOf(wrapper, 'カメラの名前')).toBe('New Camera')
+    wrapper.unmount()
+  })
+
+  it('reads the permission from the status it holds, so a refresh cannot bring back an old state', async () => {
+    const status = { state: 'prompt', addEventListener: vi.fn(), removeEventListener: vi.fn() }
+    query.mockResolvedValue(status)
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+
+    status.state = 'granted'
+    await button(wrapper, '再取得').trigger('click')
+    await flushPromises()
+
+    expect(valueOf(wrapper, '許可の状態', 'geolocation')).toContain('granted')
+    // Asked once per permission, not again on refresh.
+    expect(query).toHaveBeenCalledTimes(3)
+    wrapper.unmount()
+  })
+
+  it('copes with a browser that lacks all of it', async () => {
+    vi.stubGlobal('navigator', {})
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+
+    expect(valueOf(wrapper, 'カメラの名前')).toContain('未対応')
+    await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+    await flushPromises()
+    expect(valueOf(wrapper, '映像の取得')).toContain('使えない')
+    await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+    await flushPromises()
+    expect(valueOf(wrapper, '緯度')).toContain('未対応')
+    wrapper.unmount()
+  })
+})

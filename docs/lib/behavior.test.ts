@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BehaviorLog, clip, describeElement, keyLabel, mean, sensorPermissionMessage, speedOf } from './behavior'
+import { BehaviorLog, clip, describeElement, keyLabel, mean, speedOf } from './behavior'
 import type { Section } from './browser-info'
 
 function value(sections: Section[], label: string) {
@@ -63,7 +63,7 @@ describe('BehaviorLog', () => {
   it('starts out saying nothing has happened yet', () => {
     const sections = new BehaviorLog().sections(0)
 
-    expect(sections.map((s) => s.id)).toEqual(['mouse', 'scroll', 'keys', 'clipboard', 'tab', 'sensors'])
+    expect(sections.map((s) => s.id)).toEqual(['mouse', 'scroll', 'keys', 'clipboard', 'tab'])
     expect(value(sections, '今の位置')).toBeNull()
     expect(value(sections, '動かした距離')).toBe('0 px')
     expect(value(sections, 'キーとキーの間隔の平均')).toBeNull()
@@ -280,43 +280,5 @@ describe('BehaviorLog', () => {
       expect(value(sections, '他のタブに切り替えた回数')).toBe('0 回')
       expect(value(sections, '最後の出来事')).toBe('フォーカスが外れた (0.0 秒前)')
     })
-  })
-
-  describe('sensors', () => {
-    it('knows whether any reading has arrived', () => {
-      const log = new BehaviorLog()
-      expect(log.sensed).toBe(false)
-
-      log.accelerate(0, 0, 9.8)
-      expect(log.sensed).toBe(true)
-    })
-
-    it('shows the latest readings', () => {
-      const log = new BehaviorLog()
-      log.orient(10, 45.25, -3)
-      log.accelerate(0.1, 9.8, NaN)
-
-      const sections = log.sections(0)
-      expect(value(sections, '傾き')).toBe('α 10.0° / β 45.3° / γ -3.0°')
-      expect(value(sections, '加速度 (重力込み)')).toBe('x 0.1 / y 9.8 / z - m/s²')
-    })
-  })
-})
-
-describe('sensorPermissionMessage', () => {
-  it('reports a refusal, even of only one of the two sensors', () => {
-    expect(sensorPermissionMessage(['granted', 'denied'], false)).toBe('許可されませんでした。')
-  })
-
-  it('reports a request that could not be made', () => {
-    expect(sensorPermissionMessage('error', false)).toBe('許可をリクエストできませんでした。')
-  })
-
-  it('reports success once readings arrive', () => {
-    expect(sensorPermissionMessage(['granted', 'granted'], true)).toBe('許可されました。')
-  })
-
-  it('takes allowed-but-silent as a device without sensors', () => {
-    expect(sensorPermissionMessage(['granted', 'granted'], false)).toMatch(/センサーが付いていない/)
   })
 })

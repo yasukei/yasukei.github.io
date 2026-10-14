@@ -43,7 +43,7 @@ docs/                      Everything published to the site
 ├── lib/                   Plain TypeScript behind the tools; no Vue, and no
 │                          DOM except canvas-resize.ts (the canvas pipeline)
 │                          and the *-probes.ts files (canvas, WebGL, audio,
-│                          fonts, voices)
+│                          fonts, voices, geolocation, camera)
 └── utils.ts               Shared helpers behind both index pages
 test/                      Checks that span the whole repository
 e2e/                       Smoke tests that drive the built site in a browser

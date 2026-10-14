@@ -92,3 +92,52 @@ test('opens the tab a link points at, and keeps the choice in the URL', async ({
   await openTab(page, 'ハードウェア')
   await expect(page).toHaveURL(/#hardware$/)
 })
+
+test.describe('what needs a permission', () => {
+  const row = (page: Page, label: string) => page.locator('.bi-row', { hasText: label }).locator('.bi-value')
+
+  test('asks for nothing until the button is pressed', async ({ page }) => {
+    await page.goto('/tools/browser-reveals#permission')
+
+    await expect(row(page, '緯度')).toContainText('未取得')
+    await expect(page.getByRole('button', { name: '現在地の許可をリクエスト' })).toBeEnabled()
+  })
+
+  test.describe('with the position allowed', () => {
+    test.use({
+      permissions: ['geolocation'],
+      geolocation: { latitude: 35.681236, longitude: 139.767125, accuracy: 20 }
+    })
+
+    test('reads the current position', async ({ page }) => {
+      await page.goto('/tools/browser-reveals#permission')
+      await page.getByRole('button', { name: '現在地の許可をリクエスト' }).click()
+
+      await expect(row(page, '緯度').locator('.bi-text')).toHaveText('35.681236')
+      await expect(row(page, '経度').locator('.bi-text')).toHaveText('139.767125')
+      await expect(row(page, '誤差の範囲').locator('.bi-text')).toHaveText('20 m')
+    })
+  })
+
+  test('shows the camera and microphone, then lets go of them', async ({ page, browserName }) => {
+    // Only Chromium can be given fake devices, and have their dialog accepted,
+    // with launch flags (see playwright.config.ts).
+    test.skip(browserName !== 'chromium', 'fake devices are Chromium-only')
+    await page.goto('/tools/browser-reveals#permission')
+
+    await page.getByRole('button', { name: 'カメラの許可をリクエスト' }).click()
+    await expect(row(page, '映像の大きさ').locator('.bi-text')).toHaveText(/^\d+ × \d+$/)
+    await expect(page.locator('video')).toBeVisible()
+    // The names only become readable once a stream was allowed.
+    await expect(page.locator('[data-section="device-names"] .bi-row', { hasText: 'カメラの名前' }).locator('li')).not.toHaveCount(0)
+
+    await page.getByRole('button', { name: 'マイクの許可をリクエスト' }).click()
+    await expect(row(page, 'サンプリングレート').locator('.bi-text')).toHaveText(/^\d+ Hz$/)
+    await expect(page.getByRole('img', { name: 'マイクに入っている音の大きさ' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'カメラを止める' }).click()
+    await expect(page.locator('video')).toBeHidden()
+    await page.getByRole('button', { name: 'マイクを止める' }).click()
+    await expect(page.getByRole('button', { name: 'マイクの許可をリクエスト' })).toBeVisible()
+  })
+})

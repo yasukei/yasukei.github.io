@@ -38,7 +38,8 @@ describe('RevealTabs', () => {
       'ハードウェア',
       'インストール環境',
       'ウィンドウとページ',
-      '操作の情報'
+      '操作の情報',
+      '許可が必要なもの'
     ])
     expect(visible(wrapper)).toEqual(['browser'])
     // Hidden, not unmounted: the behaviour log has to keep recording.
@@ -99,17 +100,17 @@ describe('RevealTabs', () => {
     const tabs = () => wrapper.findAll('[role="tab"]')
 
     await tabs()[0].trigger('keydown', { key: 'ArrowLeft' })
-    expect(selected(wrapper)).toEqual(['操作の情報'])
-    expect(document.activeElement?.id).toBe('rt-tab-behavior')
+    expect(selected(wrapper)).toEqual(['許可が必要なもの'])
+    expect(document.activeElement?.id).toBe('rt-tab-permission')
 
-    await tabs()[4].trigger('keydown', { key: 'ArrowRight' })
+    await tabs()[5].trigger('keydown', { key: 'ArrowRight' })
     expect(selected(wrapper)).toEqual(['ブラウザ・OS'])
 
     await tabs()[0].trigger('keydown', { key: 'End' })
-    expect(selected(wrapper)).toEqual(['操作の情報'])
+    expect(selected(wrapper)).toEqual(['許可が必要なもの'])
 
     // Only the selected tab is in the tab order.
-    expect(tabs().map((t) => t.attributes('tabindex'))).toEqual(['-1', '-1', '-1', '-1', '0'])
+    expect(tabs().map((t) => t.attributes('tabindex'))).toEqual(['-1', '-1', '-1', '-1', '-1', '0'])
     wrapper.unmount()
   })
 })

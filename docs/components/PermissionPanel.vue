@@ -1,0 +1,385 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import ActionButton from './ActionButton.vue'
+import InfoPanel from './InfoPanel.vue'
+import {
+  collectPermission,
+  initialPermissionData,
+  type Ask,
+  type CameraInfo,
+  type MicrophoneInfo,
+  type PermissionData,
+  type PositionInfo,
+  type SensorReadings,
+  SENSOR_WAIT_MS,
+  sensorPermissionMessage
+} from '../lib/permission-info'
+import {
+  AskFailed,
+  cameraInfo,
+  getPosition,
+  listDevices,
+  microphoneInfo,
+  openMedia,
+  openPermission,
+  stopStream,
+  watchLevel
+} from '../lib/permission-probes'
+
+/**
+ * The tab for what needs a yes from the visitor. Nothing is requested on
+ * load: each button asks once, the answer fills the table, and the camera and
+ * microphone keep running until their button is pressed again (or the page is
+ * left). The picture and the sound stay on this page; only their properties
+ * are listed.
+ *
+ * The motion sensors are the odd one out: Chrome on Android hands them over
+ * without asking, so their events are listened to from the start, and the
+ * button only appears in browsers that hide them until asked (iOS, and now
+ * other Chromium).
+ */
+
+/** Sensor events come at screen rate; the table is redrawn at most this often. */
+const SENSOR_REDRAW_MS = 150
+
+const permissions = ref<PermissionData['permissions']>(initialPermissionData().permissions)
+const geolocation = ref<Ask<PositionInfo>>({ status: 'idle' })
+const camera = ref<Ask<CameraInfo>>({ status: 'idle' })
+const microphone = ref<Ask<MicrophoneInfo>>({ status: 'idle' })
+const devices = ref<PermissionData['devices']>(null)
+const level = ref(0)
+const sensors = ref<SensorReadings>({ orientation: null, motion: null })
+/** Can be hidden until asked, from a click. */
+const sensorsNeedAsking = ref(false)
+const askingSensors = ref(false)
+/** The outcome of the last request, shown beside the button. */
+const sensorStatus = ref('')
+
+interface PermissionAsking {
+  requestPermission?: () => Promise<string>
+}
+
+const sections = computed(() =>
+  collectPermission({
+    permissions: permissions.value,
+    geolocation: geolocation.value,
+    camera: camera.value,
+    microphone: microphone.value,
+    devices: devices.value,
+    sensors: sensors.value
+  })
+)
+
+const video = ref<HTMLVideoElement | null>(null)
+let cameraStream: MediaStream | null = null
+let micStream: MediaStream | null = null
+let stopMeter: (() => void) | null = null
+let gone = false
+/** Whether any sensor reading has arrived at all, however often the table is redrawn. */
+let sensed = false
+
+const PERMISSION_NAMES = ['geolocation', 'camera', 'microphone'] as const
+
+/** Kept for good: a PermissionStatus follows the browser's settings on its own. */
+const statuses: Partial<Record<(typeof PERMISSION_NAMES)[number], PermissionStatus>> = {}
+
+function readPermissions() {
+  permissions.value = {
+    geolocation: statuses.geolocation?.state ?? null,
+    camera: statuses.camera?.state ?? null,
+    microphone: statuses.microphone?.state ?? null
+  }
+}
+
+/** Counted per call, so a slow answer cannot overwrite the answer of a later call. */
+let listing = 0
+
+async function refresh() {
+  readPermissions()
+  const mine = ++listing
+  const list = await listDevices(navigator)
+  if (mine === listing && !gone) devices.value = list
+}
+
+function failure(error: unknown): Ask<never> {
+  return { status: 'failed', message: error instanceof AskFailed ? error.message : '取得できなかった' }
+}
+
+// Each request is counted, and only the latest one's answer is used. Firefox
+// never answers a dialog that was closed without choosing, so the button has to
+// stay usable while a request is pending, and a later press must not be
+// overwritten by the earlier one coming back after all.
+let positionAsk = 0
+let cameraAsk = 0
+let micAsk = 0
+
+async function askPosition() {
+  const mine = ++positionAsk
+  geolocation.value = { status: 'asking' }
+  let answer: Ask<PositionInfo>
+  try {
+    answer = { status: 'done', value: await getPosition(navigator) }
+  } catch (error) {
+    answer = failure(error)
+  }
+  if (mine === positionAsk && !gone) geolocation.value = answer
+  refresh()
+}
+
+function stopCamera() {
+  stopStream(cameraStream)
+  cameraStream = null
+  if (video.value) video.value.srcObject = null
+  camera.value = { status: 'idle' }
+}
+
+async function startCamera() {
+  const mine = ++cameraAsk
+  camera.value = { status: 'asking' }
+  try {
+    const stream = await openMedia(navigator, { video: true })
+    if (gone || mine !== cameraAsk) return stopStream(stream)
+    cameraStream = stream
+    stream.getVideoTracks()[0]?.addEventListener('ended', stopCamera)
+    if (video.value) video.value.srcObject = stream
+    camera.value = { status: 'done', value: cameraInfo(stream) }
+  } catch (error) {
+    if (mine === cameraAsk) camera.value = failure(error)
+  }
+  refresh()
+}
+
+function stopMicrophone() {
+  stopMeter?.()
+  stopMeter = null
+  stopStream(micStream)
+  micStream = null
+  microphone.value = { status: 'idle' }
+}
+
+async function startMicrophone() {
+  const mine = ++micAsk
+  microphone.value = { status: 'asking' }
+  try {
+    const stream = await openMedia(navigator, { audio: true })
+    if (gone || mine !== micAsk) return stopStream(stream)
+    micStream = stream
+    stream.getAudioTracks()[0]?.addEventListener('ended', stopMicrophone)
+    try {
+      stopMeter = watchLevel(stream, (value) => (level.value = value))
+    } catch {
+      // No meter is no reason to give up the microphone itself.
+    }
+    microphone.value = { status: 'done', value: microphoneInfo(stream) }
+  } catch (error) {
+    if (mine === micAsk) microphone.value = failure(error)
+  }
+  refresh()
+}
+
+async function askSensors() {
+  askingSensors.value = true
+  sensorStatus.value = ''
+  let answers: string[] | 'error'
+  try {
+    // Both asked before awaiting either: Safari only allows asking while the
+    // click is fresh, and an await in between can use that up.
+    const asking = [DeviceOrientationEvent, typeof DeviceMotionEvent === 'undefined' ? undefined : DeviceMotionEvent]
+      .map((type) => (type as unknown as PermissionAsking | undefined)?.requestPermission?.())
+      .filter((answer): answer is Promise<string> => answer !== undefined)
+    answers = await Promise.all(asking)
+  } catch {
+    answers = 'error'
+  }
+  if (answers !== 'error' && answers.every((answer) => answer === 'granted') && !sensed) {
+    await new Promise((resolve) => setTimeout(resolve, SENSOR_WAIT_MS))
+  }
+  sensorStatus.value = sensorPermissionMessage(answers, sensed)
+  askingSensors.value = false
+}
+
+const stops: (() => void)[] = []
+
+/**
+ * Keeps the latest reading of one sensor. The first of a burst is passed on at
+ * once and the last one a moment later, so that a sensor that stops reporting
+ * leaves its final value in the table rather than one from mid-movement.
+ */
+function onSensor<T>(read: (e: Event) => T | null, keep: (value: T) => void) {
+  let last = -Infinity
+  let pending: T | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  stops.push(() => clearTimeout(timer))
+
+  const flush = () => {
+    timer = undefined
+    if (pending === null) return
+    keep(pending)
+    pending = null
+  }
+
+  return (e: Event) => {
+    const value = read(e)
+    if (value === null) return
+    sensed = true
+    if (e.timeStamp - last >= SENSOR_REDRAW_MS) {
+      last = e.timeStamp
+      clearTimeout(timer)
+      timer = undefined
+      pending = null
+      keep(value)
+      return
+    }
+    pending = value
+    timer ??= setTimeout(flush, SENSOR_REDRAW_MS)
+  }
+}
+
+onMounted(async () => {
+  refresh()
+  sensorsNeedAsking.value =
+    typeof DeviceOrientationEvent !== 'undefined' &&
+    typeof (DeviceOrientationEvent as unknown as PermissionAsking).requestPermission === 'function'
+  const sensorListeners: [string, (e: Event) => void][] = [
+    [
+      'deviceorientation',
+      onSensor(
+        (e) => {
+          const o = e as DeviceOrientationEvent
+          if (o.alpha === null && o.beta === null && o.gamma === null) return null
+          return { alpha: o.alpha ?? NaN, beta: o.beta ?? NaN, gamma: o.gamma ?? NaN }
+        },
+        (orientation) => (sensors.value = { ...sensors.value, orientation })
+      )
+    ],
+    [
+      'devicemotion',
+      onSensor(
+        (e) => {
+          const a = (e as DeviceMotionEvent).accelerationIncludingGravity
+          if (!a || (a.x === null && a.y === null && a.z === null)) return null
+          return { x: a.x ?? NaN, y: a.y ?? NaN, z: a.z ?? NaN }
+        },
+        (motion) => (sensors.value = { ...sensors.value, motion })
+      )
+    ]
+  ]
+  for (const [type, fn] of sensorListeners) {
+    window.addEventListener(type, fn, { passive: true })
+    stops.push(() => window.removeEventListener(type, fn))
+  }
+  // A change in the browser's own settings, or a plugged-in camera, shows up at once.
+  navigator.mediaDevices?.addEventListener?.('devicechange', refresh)
+  stops.push(() => navigator.mediaDevices?.removeEventListener?.('devicechange', refresh))
+  await Promise.all(
+    PERMISSION_NAMES.map(async (name) => {
+      const status = await openPermission(navigator, name)
+      // Left while waiting for the answer: nobody will unmount again to stop listening.
+      if (!status || gone) return
+      statuses[name] = status
+      status.addEventListener('change', readPermissions)
+      stops.push(() => status.removeEventListener('change', readPermissions))
+      readPermissions()
+    })
+  )
+})
+
+onBeforeUnmount(() => {
+  gone = true
+  stopCamera()
+  stopMicrophone()
+  for (const stop of stops) stop()
+})
+</script>
+
+<template>
+  <InfoPanel :sections="sections" refreshable @refresh="refresh">
+    <template #before-geolocation>
+      <div class="pp-ask">
+        <ActionButton @click="askPosition">
+          {{ geolocation.status === 'done' ? '現在地をもう一度取得' : '現在地の許可をリクエスト' }}
+        </ActionButton>
+      </div>
+    </template>
+
+    <template #before-camera>
+      <div>
+        <div class="pp-ask">
+          <ActionButton @click="camera.status === 'done' ? stopCamera() : startCamera()">
+            {{ camera.status === 'done' ? 'カメラを止める' : 'カメラの許可をリクエスト' }}
+          </ActionButton>
+        </div>
+        <!-- Always mounted so the stream has somewhere to go; only shown while it runs. -->
+        <video
+          v-show="camera.status === 'done'"
+          ref="video"
+          class="pp-video"
+          autoplay
+          muted
+          playsinline
+          aria-label="カメラの映像 (この画面にだけ映している)"
+        ></video>
+      </div>
+    </template>
+
+    <template #before-microphone>
+      <div>
+        <div class="pp-ask">
+          <ActionButton @click="microphone.status === 'done' ? stopMicrophone() : startMicrophone()">
+            {{ microphone.status === 'done' ? 'マイクを止める' : 'マイクの許可をリクエスト' }}
+          </ActionButton>
+        </div>
+        <div v-if="microphone.status === 'done'" class="pp-meter" role="img" aria-label="マイクに入っている音の大きさ">
+          <div class="pp-meter-bar" :style="{ width: `${level}%` }"></div>
+        </div>
+      </div>
+    </template>
+
+    <template #before-sensors>
+      <div v-if="sensorsNeedAsking" class="pp-ask">
+        <ActionButton :disabled="askingSensors" @click="askSensors">傾き・加速度センサーの許可をリクエスト</ActionButton>
+        <span class="pp-status" role="status">{{ askingSensors ? '確認中…' : sensorStatus }}</span>
+      </div>
+    </template>
+  </InfoPanel>
+</template>
+
+<style scoped>
+.pp-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.pp-status {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+.pp-video {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  margin-top: 8px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 6px;
+  background: var(--vp-c-bg-soft);
+}
+
+.pp-meter {
+  height: 8px;
+  max-width: 480px;
+  margin-top: 8px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 4px;
+  background: var(--vp-c-bg-soft);
+  overflow: hidden;
+}
+
+.pp-meter-bar {
+  height: 100%;
+  background: var(--vp-c-brand-1);
+  transition: width 0.1s linear;
+}
+</style>
