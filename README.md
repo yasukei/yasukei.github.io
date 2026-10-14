@@ -1,6 +1,6 @@
 # yasukei.github.io
 
-[![Deploy static content to Pages](https://github.com/yasukei/yasukei.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/yasukei/yasukei.github.io/actions/workflows/deploy.yml)
+[![CI/CD](https://github.com/yasukei/yasukei.github.io/actions/workflows/cicd.yml/badge.svg)](https://github.com/yasukei/yasukei.github.io/actions/workflows/cicd.yml)
 
 👉 **[https://yasukei.github.io/](https://yasukei.github.io/)**
 
