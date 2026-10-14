@@ -60,6 +60,24 @@ export interface DeviceName {
   deviceId: string
 }
 
+export interface Orientation {
+  alpha: number
+  beta: number
+  gamma: number
+}
+
+export interface Motion {
+  x: number
+  y: number
+  z: number
+}
+
+/** The latest reading of each motion sensor, or null while none has arrived. */
+export interface SensorReadings {
+  orientation: Orientation | null
+  motion: Motion | null
+}
+
 export interface PermissionData {
   /** null for a name the browser does not know (Firefox has no 'camera'). */
   permissions: { geolocation: PermissionState | null; camera: PermissionState | null; microphone: PermissionState | null }
@@ -68,6 +86,7 @@ export interface PermissionData {
   microphone: Ask<MicrophoneInfo>
   /** null when enumerateDevices() is missing or gave up. */
   devices: DeviceName[] | null
+  sensors: SensorReadings
 }
 
 // ---------------------------------------------------------------------------
@@ -318,13 +337,56 @@ export function devicesSection(devices: DeviceName[] | null): Section {
   return { id: 'device-names', title: '機器の名前', rows }
 }
 
+/** How long to wait for a first sensor reading after permission is granted. */
+export const SENSOR_WAIT_MS = 1000
+
+/**
+ * What to say after asking for the motion sensors. No API tells whether the
+ * device has the sensors, so it is told by whether readings arrive once they
+ * are allowed: a desktop grants the permission and then simply sends nothing.
+ *
+ * `answers` are what each requestPermission() resolved to, or 'error' if asking
+ * failed outright.
+ */
+export function sensorPermissionMessage(answers: string[] | 'error', sensed: boolean): string {
+  if (answers === 'error') return '許可をリクエストできませんでした。'
+  if (answers.some((answer) => answer !== 'granted')) return '許可されませんでした。'
+  if (sensed) return '許可されました。'
+  return `許可されましたが、${SENSOR_WAIT_MS / 1000}秒待ってもセンサーの値が届きません。この端末にはセンサーが付いていないようです。`
+}
+
+export function sensorsSection({ orientation, motion }: SensorReadings): Section {
+  const missing = 'イベントが届いていません (センサーの無い端末か、許可が必要なブラウザ)'
+  const n = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '-')
+  return {
+    id: 'sensors',
+    title: '傾き・加速度センサー (スマホ)',
+    rows: [
+      {
+        label: '傾き',
+        api: "addEventListener('deviceorientation', e => [e.alpha, e.beta, e.gamma])",
+        value: orientation ? `α ${n(orientation.alpha)}° / β ${n(orientation.beta)}° / γ ${n(orientation.gamma)}°` : null,
+        missing,
+        note: 'Android の Chrome では許可なしでアクセスできる。iOS では許可ダイアログが必要(上のボタン)。持ち方や手の震えにも人ごとの癖が出る。'
+      },
+      {
+        label: '加速度 (重力込み)',
+        api: "addEventListener('devicemotion', e => e.accelerationIncludingGravity)",
+        value: motion ? `x ${n(motion.x)} / y ${n(motion.y)} / z ${n(motion.z)} m/s²` : null,
+        missing
+      }
+    ]
+  }
+}
+
 /** Every section of the permission category, in the order shown. */
 export function collectPermission(data: PermissionData): Section[] {
   return [
     geolocationSection(data.permissions.geolocation, data.geolocation),
     cameraSection(data.permissions.camera, data.camera),
     microphoneSection(data.permissions.microphone, data.microphone),
-    devicesSection(data.devices)
+    devicesSection(data.devices),
+    sensorsSection(data.sensors)
   ]
 }
 
@@ -335,7 +397,8 @@ export function initialPermissionData(): PermissionData {
     geolocation: { status: 'idle' },
     camera: { status: 'idle' },
     microphone: { status: 'idle' },
-    devices: null
+    devices: null,
+    sensors: { orientation: null, motion: null }
   }
 }
 

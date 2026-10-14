@@ -9,6 +9,8 @@ import {
   initialPermissionData,
   levelOf,
   microphoneSection,
+  sensorPermissionMessage,
+  sensorsSection,
   type Ask,
   type DeviceName,
   type PositionInfo
@@ -197,11 +199,48 @@ describe('devicesSection', () => {
   })
 })
 
+describe('sensorsSection', () => {
+  it('shows the latest readings', () => {
+    const section = sensorsSection({
+      orientation: { alpha: 10, beta: 45.25, gamma: -3 },
+      motion: { x: 0.1, y: 9.8, z: NaN }
+    })
+
+    expect(row(section, '傾き').value).toBe('α 10.0° / β 45.3° / γ -3.0°')
+    expect(row(section, '加速度 (重力込み)').value).toBe('x 0.1 / y 9.8 / z - m/s²')
+  })
+
+  it('says no event has arrived, rather than showing zeros', () => {
+    const section = sensorsSection({ orientation: null, motion: null })
+
+    expect(row(section, '傾き').value).toBeNull()
+    expect(row(section, '傾き').missing).toContain('イベントが届いていません')
+  })
+})
+
+describe('sensorPermissionMessage', () => {
+  it('reports a refusal, even of only one of the two sensors', () => {
+    expect(sensorPermissionMessage(['granted', 'denied'], false)).toBe('許可されませんでした。')
+  })
+
+  it('reports that asking failed outright', () => {
+    expect(sensorPermissionMessage('error', false)).toBe('許可をリクエストできませんでした。')
+  })
+
+  it('confirms an allowance once readings arrive', () => {
+    expect(sensorPermissionMessage(['granted', 'granted'], true)).toBe('許可されました。')
+  })
+
+  it('takes allowed-but-silent as a device without sensors', () => {
+    expect(sensorPermissionMessage(['granted', 'granted'], false)).toMatch(/センサーが付いていない/)
+  })
+})
+
 describe('collectPermission', () => {
   it('lists the sections in order, all of them while nothing was asked', () => {
     const sections = collectPermission(initialPermissionData())
 
-    expect(sections.map((s) => s.id)).toEqual(['geolocation', 'camera', 'microphone', 'device-names'])
+    expect(sections.map((s) => s.id)).toEqual(['geolocation', 'camera', 'microphone', 'device-names', 'sensors'])
   })
 
   it('has a unique label in each section, as the table keys rows by it', () => {

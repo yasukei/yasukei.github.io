@@ -1,7 +1,7 @@
 /**
  * What a page can record about how it is being used: where the mouse goes,
  * how far and how fast the page is scrolled, the rhythm of typing, what is
- * selected, copied and pasted, when the tab is left, and the motion sensors.
+ * selected, copied and pasted, and when the tab is left.
  *
  * `BehaviorLog` is fed plain values (the component unpacks the DOM events)
  * with the event's timestamp in milliseconds, and turns what it has seen so
@@ -93,24 +93,6 @@ function round(n: number | null): number | null {
   return n === null ? null : Math.round(n)
 }
 
-/** How long to wait for a first sensor reading after permission is granted. */
-export const SENSOR_WAIT_MS = 1000
-
-/**
- * What to say after asking for the motion sensors. No API tells whether the
- * device has the sensors, so it is told by whether readings arrive once they
- * are allowed: a desktop grants the permission and then simply sends nothing.
- *
- * `answers` are what each requestPermission() resolved to, or 'error' if asking
- * failed outright.
- */
-export function sensorPermissionMessage(answers: string[] | 'error', sensed: boolean): string {
-  if (answers === 'error') return '許可をリクエストできませんでした。'
-  if (answers.some((answer) => answer !== 'granted')) return '許可されませんでした。'
-  if (sensed) return '許可されました。'
-  return `許可されましたが、${SENSOR_WAIT_MS / 1000}秒待ってもセンサーの値が届きません。この端末にはセンサーが付いていないようです。`
-}
-
 export class BehaviorLog {
   /** Every movement, with the distance from the one before it. */
   readonly trail: (Point & { d: number })[] = []
@@ -136,9 +118,6 @@ export class BehaviorLog {
   private hiddenTotal = 0
   private blurCount = 0
   private lastEvent: { what: string; t: number } | null = null
-
-  private orientation: { alpha: number; beta: number; gamma: number } | null = null
-  private motion: { x: number; y: number; z: number } | null = null
 
   move(x: number, y: number, t: number): void {
     const last = this.trail[this.trail.length - 1]
@@ -220,27 +199,13 @@ export class BehaviorLog {
     this.lastEvent = { what: 'フォーカスが外れた', t }
   }
 
-  orient(alpha: number, beta: number, gamma: number): void {
-    this.orientation = { alpha, beta, gamma }
-  }
-
-  accelerate(x: number, y: number, z: number): void {
-    this.motion = { x, y, z }
-  }
-
-  /** Whether any sensor reading has arrived at all. */
-  get sensed(): boolean {
-    return this.orientation !== null || this.motion !== null
-  }
-
   sections(now: number): Section[] {
     return [
       this.mouseSection(now),
       this.scrollSection(now),
       this.keySection(),
       this.clipboardSection(),
-      this.tabSection(now),
-      this.sensorSection()
+      this.tabSection(now)
     ]
   }
 
@@ -423,32 +388,6 @@ export class BehaviorLog {
           api: '',
           value: this.lastEvent ? `${this.lastEvent.what} (${seconds(now - this.lastEvent.t)}前)` : null,
           missing: 'まだありません'
-        }
-      ]
-    }
-  }
-
-  private sensorSection(): Section {
-    const missing = 'イベントが届いていません (センサーの無い端末か、許可が必要なブラウザ)'
-    const o = this.orientation
-    const m = this.motion
-    const n = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '-')
-    return {
-      id: 'sensors',
-      title: '傾き・加速度センサー (スマホ)',
-      rows: [
-        {
-          label: '傾き',
-          api: "addEventListener('deviceorientation', e => [e.alpha, e.beta, e.gamma])",
-          value: o ? `α ${n(o.alpha)}° / β ${n(o.beta)}° / γ ${n(o.gamma)}°` : null,
-          missing,
-          note: 'Android の Chrome では許可なしで届く。iOS では許可ダイアログが必要(上のボタン)。持ち方や手の震えにも人ごとの癖が出る。'
-        },
-        {
-          label: '加速度 (重力込み)',
-          api: "addEventListener('devicemotion', e => e.accelerationIncludingGravity)",
-          value: m ? `x ${n(m.x)} / y ${n(m.y)} / z ${n(m.z)} m/s²` : null,
-          missing
         }
       ]
     }

@@ -37,8 +37,7 @@ describe('BehaviorTracker', () => {
       'scroll',
       'keys',
       'clipboard',
-      'tab',
-      'sensors'
+      'tab'
     ])
     expect(valueOf(wrapper, '今の位置')).toContain('まだ動いていません')
     wrapper.unmount()
@@ -71,78 +70,6 @@ describe('BehaviorTracker', () => {
     await tick()
 
     expect(valueOf(wrapper, '入力欄の中身 (送信前)')).toMatch(/^not sent yet/)
-    wrapper.unmount()
-  })
-
-  describe('sensor permission', () => {
-    /** A browser that hides the sensors until asked, as iOS and now Chromium do. */
-    function sensorsAnswer(answer: string) {
-      const requestPermission = vi.fn().mockResolvedValue(answer)
-      vi.stubGlobal('DeviceOrientationEvent', Object.assign(class {}, { requestPermission }))
-      vi.stubGlobal('DeviceMotionEvent', Object.assign(class {}, { requestPermission }))
-      return requestPermission
-    }
-
-    afterEach(() => {
-      vi.unstubAllGlobals()
-    })
-
-    it('puts the button right above the sensor section', async () => {
-      sensorsAnswer('granted')
-      const wrapper = mount(BehaviorTracker)
-      await tick()
-
-      expect(wrapper.get('.bt-sensors').element.nextElementSibling?.getAttribute('data-section')).toBe('sensors')
-      wrapper.unmount()
-    })
-
-    it('asks for both sensors, and keeps the button after a desktop says yes and stays silent', async () => {
-      const requestPermission = sensorsAnswer('granted')
-      const wrapper = mount(BehaviorTracker)
-      await tick()
-
-      await wrapper.get('.bt-btn').trigger('click')
-      expect(requestPermission).toHaveBeenCalledTimes(2)
-      await vi.advanceTimersByTimeAsync(1000)
-
-      expect(wrapper.get('.bt-status').text()).toMatch(/センサーが付いていない/)
-      expect(wrapper.find('.bt-btn').exists()).toBe(true)
-      expect(wrapper.get('.bt-btn').attributes('disabled')).toBeUndefined()
-      wrapper.unmount()
-    })
-
-    it('says so when readings arrive', async () => {
-      sensorsAnswer('granted')
-      const wrapper = mount(BehaviorTracker)
-      await tick()
-
-      await wrapper.get('.bt-btn').trigger('click')
-      window.dispatchEvent(Object.assign(new Event('deviceorientation'), { alpha: 1, beta: 2, gamma: 3 }))
-      await vi.advanceTimersByTimeAsync(1000)
-
-      expect(wrapper.get('.bt-status').text()).toBe('許可されました。')
-      wrapper.unmount()
-    })
-
-    it('says so when refused', async () => {
-      sensorsAnswer('denied')
-      const wrapper = mount(BehaviorTracker)
-      await tick()
-
-      await wrapper.get('.bt-btn').trigger('click')
-      await vi.advanceTimersByTimeAsync(0)
-
-      expect(wrapper.get('.bt-status').text()).toBe('許可されませんでした。')
-      wrapper.unmount()
-    })
-  })
-
-  it('has no button where the sensors need no asking', async () => {
-    // happy-dom has no DeviceOrientationEvent at all, like a desktop Firefox.
-    const wrapper = mount(BehaviorTracker)
-    await tick()
-
-    expect(wrapper.find('.bt-btn').exists()).toBe(false)
     wrapper.unmount()
   })
 

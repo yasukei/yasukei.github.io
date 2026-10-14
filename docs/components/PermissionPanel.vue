@@ -8,7 +8,10 @@ import {
   type CameraInfo,
   type MicrophoneInfo,
   type PermissionData,
-  type PositionInfo
+  type PositionInfo,
+  type SensorReadings,
+  SENSOR_WAIT_MS,
+  sensorPermissionMessage
 } from '../lib/permission-info'
 import {
   AskFailed,
@@ -29,7 +32,15 @@ import {
  * microphone keep running until their button is pressed again (or the page is
  * left). The picture and the sound stay on this page; only their properties
  * are listed.
+ *
+ * The motion sensors are the odd one out: Chrome on Android hands them over
+ * without asking, so their events are listened to from the start, and the
+ * button only appears in browsers that hide them until asked (iOS, and now
+ * other Chromium).
  */
+
+/** Sensor events come at screen rate; the table is redrawn at most this often. */
+const SENSOR_REDRAW_MS = 150
 
 const permissions = ref<PermissionData['permissions']>(initialPermissionData().permissions)
 const geolocation = ref<Ask<PositionInfo>>({ status: 'idle' })
@@ -37,6 +48,16 @@ const camera = ref<Ask<CameraInfo>>({ status: 'idle' })
 const microphone = ref<Ask<MicrophoneInfo>>({ status: 'idle' })
 const devices = ref<PermissionData['devices']>(null)
 const level = ref(0)
+const sensors = ref<SensorReadings>({ orientation: null, motion: null })
+/** Can be hidden until asked, from a click. */
+const sensorsNeedAsking = ref(false)
+const askingSensors = ref(false)
+/** The outcome of the last request, shown beside the button. */
+const sensorStatus = ref('')
+
+interface PermissionAsking {
+  requestPermission?: () => Promise<string>
+}
 
 const sections = computed(() =>
   collectPermission({
@@ -44,7 +65,8 @@ const sections = computed(() =>
     geolocation: geolocation.value,
     camera: camera.value,
     microphone: microphone.value,
-    devices: devices.value
+    devices: devices.value,
+    sensors: sensors.value
   })
 )
 
@@ -53,6 +75,8 @@ let cameraStream: MediaStream | null = null
 let micStream: MediaStream | null = null
 let stopMeter: (() => void) | null = null
 let gone = false
+/** Whether any sensor reading has arrived at all, however often the table is redrawn. */
+let sensed = false
 
 async function refresh() {
   const [geo, cam, mic, list] = await Promise.all([
@@ -128,10 +152,75 @@ async function startMicrophone() {
   refresh()
 }
 
+async function askSensors() {
+  askingSensors.value = true
+  sensorStatus.value = ''
+  let answers: string[] | 'error'
+  try {
+    // Both asked before awaiting either: Safari only allows asking while the
+    // click is fresh, and an await in between can use that up.
+    const asking = [DeviceOrientationEvent, typeof DeviceMotionEvent === 'undefined' ? undefined : DeviceMotionEvent]
+      .map((type) => (type as unknown as PermissionAsking | undefined)?.requestPermission?.())
+      .filter((answer): answer is Promise<string> => answer !== undefined)
+    answers = await Promise.all(asking)
+  } catch {
+    answers = 'error'
+  }
+  if (answers !== 'error' && answers.every((answer) => answer === 'granted') && !sensed) {
+    await new Promise((resolve) => setTimeout(resolve, SENSOR_WAIT_MS))
+  }
+  sensorStatus.value = sensorPermissionMessage(answers, sensed)
+  askingSensors.value = false
+}
+
+/** Keeps the latest reading of one sensor, passing on at most one per SENSOR_REDRAW_MS. */
+function onSensor<T>(read: (e: Event) => T | null, keep: (value: T) => void) {
+  let last = -Infinity
+  return (e: Event) => {
+    const value = read(e)
+    if (value === null) return
+    sensed = true
+    if (e.timeStamp - last < SENSOR_REDRAW_MS) return
+    last = e.timeStamp
+    keep(value)
+  }
+}
+
 const stops: (() => void)[] = []
 
 onMounted(async () => {
   refresh()
+  sensorsNeedAsking.value =
+    typeof DeviceOrientationEvent !== 'undefined' &&
+    typeof (DeviceOrientationEvent as unknown as PermissionAsking).requestPermission === 'function'
+  const sensorListeners: [string, (e: Event) => void][] = [
+    [
+      'deviceorientation',
+      onSensor(
+        (e) => {
+          const o = e as DeviceOrientationEvent
+          if (o.alpha === null && o.beta === null && o.gamma === null) return null
+          return { alpha: o.alpha ?? NaN, beta: o.beta ?? NaN, gamma: o.gamma ?? NaN }
+        },
+        (orientation) => (sensors.value = { ...sensors.value, orientation })
+      )
+    ],
+    [
+      'devicemotion',
+      onSensor(
+        (e) => {
+          const a = (e as DeviceMotionEvent).accelerationIncludingGravity
+          if (!a || (a.x === null && a.y === null && a.z === null)) return null
+          return { x: a.x ?? NaN, y: a.y ?? NaN, z: a.z ?? NaN }
+        },
+        (motion) => (sensors.value = { ...sensors.value, motion })
+      )
+    ]
+  ]
+  for (const [type, fn] of sensorListeners) {
+    window.addEventListener(type, fn, { passive: true })
+    stops.push(() => window.removeEventListener(type, fn))
+  }
   // A change in the browser's own settings, or a plugged-in camera, shows up at once.
   navigator.mediaDevices?.addEventListener?.('devicechange', refresh)
   stops.push(() => navigator.mediaDevices?.removeEventListener?.('devicechange', refresh))
@@ -204,6 +293,13 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </template>
+
+    <template #before-sensors>
+      <div v-if="sensorsNeedAsking" class="pp-ask">
+        <button class="pp-btn" :disabled="askingSensors" @click="askSensors">傾き・加速度センサーの許可をリクエスト</button>
+        <span class="pp-status" role="status">{{ askingSensors ? '確認中…' : sensorStatus }}</span>
+      </div>
+    </template>
   </InfoPanel>
 </template>
 
@@ -232,6 +328,11 @@ onBeforeUnmount(() => {
 .pp-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.pp-status {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
 }
 
 .pp-video {

@@ -83,7 +83,8 @@ describe('PermissionPanel', () => {
       'geolocation',
       'camera',
       'microphone',
-      'device-names'
+      'device-names',
+      'sensors'
     ])
     expect(valueOf(wrapper, '緯度')).toContain('未取得')
     wrapper.unmount()
@@ -237,6 +238,132 @@ describe('PermissionPanel', () => {
 
       expect(valueOf(wrapper, '音声の取得')).toContain('許可されなかった')
       wrapper.unmount()
+    })
+  })
+
+  describe('motion sensors', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    /** A browser that hides the sensors until asked, as iOS and now Chromium do. */
+    function sensorsAnswer(answer: string) {
+      const requestPermission = vi.fn().mockResolvedValue(answer)
+      vi.stubGlobal('DeviceOrientationEvent', Object.assign(class {}, { requestPermission }))
+      vi.stubGlobal('DeviceMotionEvent', Object.assign(class {}, { requestPermission }))
+      return requestPermission
+    }
+
+    function orient(alpha: number, timeStamp: number) {
+      const event = Object.assign(new Event('deviceorientation'), { alpha, beta: 2, gamma: 3 })
+      Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+      window.dispatchEvent(event)
+    }
+
+    const buttonText = '傾き・加速度センサーの許可をリクエスト'
+
+    it('puts the button right above the sensor section', async () => {
+      sensorsAnswer('granted')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(button(wrapper, buttonText).element.parentElement?.nextElementSibling?.getAttribute('data-section')).toBe(
+        'sensors'
+      )
+      wrapper.unmount()
+    })
+
+    it('has no button where the sensors need no asking', async () => {
+      // happy-dom has no DeviceOrientationEvent at all, like a desktop Firefox.
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(wrapper.findAll('button').some((b) => b.text() === buttonText)).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('shows readings that arrive without being asked for', async () => {
+      const wrapper = mount(PermissionPanel)
+      orient(10, 0)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(valueOf(wrapper, '傾き')).toBe('α 10.0° / β 2.0° / γ 3.0°')
+      wrapper.unmount()
+    })
+
+    it('redraws the table only so often, however fast the sensor reports', async () => {
+      const wrapper = mount(PermissionPanel)
+      orient(10, 0)
+      orient(11, 50)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(valueOf(wrapper, '傾き')).toMatch(/^α 10\.0°/)
+
+      orient(12, 200)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(valueOf(wrapper, '傾き')).toMatch(/^α 12\.0°/)
+      wrapper.unmount()
+    })
+
+    it('ignores an event without any reading, as a desktop sends', async () => {
+      const wrapper = mount(PermissionPanel)
+      window.dispatchEvent(Object.assign(new Event('deviceorientation'), { alpha: null, beta: null, gamma: null }))
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(valueOf(wrapper, '傾き')).toContain('イベントが届いていません')
+      wrapper.unmount()
+    })
+
+    it('asks for both sensors, and keeps the button after a desktop says yes and stays silent', async () => {
+      const requestPermission = sensorsAnswer('granted')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await button(wrapper, buttonText).trigger('click')
+      expect(requestPermission).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(wrapper.get('.pp-status').text()).toMatch(/センサーが付いていない/)
+      expect(button(wrapper, buttonText).attributes('disabled')).toBeUndefined()
+      wrapper.unmount()
+    })
+
+    it('says so when readings arrive', async () => {
+      sensorsAnswer('granted')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await button(wrapper, buttonText).trigger('click')
+      orient(1, 0)
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(wrapper.get('.pp-status').text()).toBe('許可されました。')
+      wrapper.unmount()
+    })
+
+    it('says so when refused', async () => {
+      sensorsAnswer('denied')
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await button(wrapper, buttonText).trigger('click')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(wrapper.get('.pp-status').text()).toBe('許可されませんでした。')
+      wrapper.unmount()
+    })
+
+    it('stops listening once it is gone', async () => {
+      const wrapper = mount(PermissionPanel)
+      await vi.advanceTimersByTimeAsync(0)
+
+      const remove = vi.spyOn(window, 'removeEventListener')
+      wrapper.unmount()
+
+      expect(remove.mock.calls.map((c) => c[0])).toEqual(expect.arrayContaining(['deviceorientation', 'devicemotion']))
     })
   })
 
