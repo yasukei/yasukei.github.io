@@ -1,0 +1,49 @@
+# Checks for updates once a month and opens pull requests for them.
+# - Minor and patch updates come as one pull request per ecosystem; a major
+#   comes on its own, so a breaking change can be looked at by itself.
+# - A version less than 7 days old is not proposed, to stay clear of a release
+#   that gets pulled or replaced right after publishing. Security updates do
+#   not wait.
+# - Commit messages follow this repository's prefixes: ci(deps) / build(deps).
+version: 2
+updates:
+  # The actions in .github/workflows/. They are pinned to a commit hash, and the
+  # update rewrites both the hash and the version in the comment beside it.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      github-actions-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # Its major follows the Node release, which is set by node-version in
+      # cicd.yml; it moves when that does, by hand.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+    # A group takes an update before any group below it can.
+    groups:
+      # These are released in lockstep and require each other's exact version,
+      # so a major split across separate pull requests would fail npm ci in
+      # every one of them.
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
+      playwright:
+        patterns: ["playwright", "@playwright/test"]
+      npm-minor-patch:
+        update-types: [minor, patch]
