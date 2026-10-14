@@ -131,14 +131,50 @@ describe('PermissionPanel', () => {
       wrapper.unmount()
     })
 
-    it('does not offer a second request while the dialog is open', async () => {
+    it('can be asked again while the dialog seems open, as Firefox never answers a closed one', async () => {
       getCurrentPosition.mockImplementation(() => {})
       const wrapper = mount(PermissionPanel)
       await button(wrapper, '現在地の許可をリクエスト').trigger('click')
       await flushPromises()
 
-      expect(button(wrapper, '現在地の許可をリクエスト').attributes('disabled')).toBeDefined()
       expect(valueOf(wrapper, '緯度')).toContain('待っています')
+      expect(button(wrapper, '現在地の許可をリクエスト').attributes('disabled')).toBeUndefined()
+
+      getCurrentPosition.mockImplementation((ok) =>
+        ok({
+          coords: { latitude: 1, longitude: 2, accuracy: 3, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+          timestamp: 0
+        })
+      )
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+      await flushPromises()
+
+      expect(valueOf(wrapper, '緯度')).toBe('1.000000')
+      wrapper.unmount()
+    })
+
+    it('keeps the answer of the later request when the earlier one comes back after it', async () => {
+      const answers: ((fail: boolean) => void)[] = []
+      getCurrentPosition.mockImplementation((ok, fail) =>
+        answers.push((refuse) =>
+          refuse
+            ? fail({ code: 1 })
+            : ok({
+                coords: { latitude: 5, longitude: 6, accuracy: 7, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+                timestamp: 0
+              })
+        )
+      )
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+      await button(wrapper, '現在地の許可をリクエスト').trigger('click')
+
+      answers[1](false)
+      await flushPromises()
+      answers[0](true)
+      await flushPromises()
+
+      expect(valueOf(wrapper, '緯度')).toBe('5.000000')
       wrapper.unmount()
     })
   })
@@ -195,6 +231,27 @@ describe('PermissionPanel', () => {
       wrapper.unmount()
 
       expect(track.stop).toHaveBeenCalled()
+    })
+
+    it('can be asked again while the dialog seems open, and lets go of the earlier answer', async () => {
+      const first = fakeTrack('first', {})
+      const second = fakeTrack('second', {})
+      const allow: ((stream: unknown) => void)[] = []
+      getUserMedia.mockImplementation(() => new Promise((resolve) => allow.push(resolve)))
+      const wrapper = mount(PermissionPanel)
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+      expect(button(wrapper, 'カメラの許可をリクエスト').attributes('disabled')).toBeUndefined()
+      await button(wrapper, 'カメラの許可をリクエスト').trigger('click')
+
+      allow[1](fakeStream(second))
+      await flushPromises()
+      allow[0](fakeStream(first))
+      await flushPromises()
+
+      expect(valueOf(wrapper, '使っているカメラ')).toBe('second')
+      expect(first.stop).toHaveBeenCalled()
+      expect(second.stop).not.toHaveBeenCalled()
+      wrapper.unmount()
     })
 
     it('lets go of a camera that arrives after the page was left', async () => {
@@ -295,15 +352,27 @@ describe('PermissionPanel', () => {
       wrapper.unmount()
     })
 
-    it('redraws the table only so often, however fast the sensor reports', async () => {
+    it('redraws the table only so often, and ends on the last reading', async () => {
       const wrapper = mount(PermissionPanel)
       orient(10, 0)
       orient(11, 50)
+      orient(12, 100)
       await vi.advanceTimersByTimeAsync(0)
+      // The first at once; the others are held back.
       expect(valueOf(wrapper, '傾き')).toMatch(/^α 10\.0°/)
 
-      orient(12, 200)
+      // Then the sensor goes quiet, as when the phone is put down.
+      await vi.advanceTimersByTimeAsync(150)
+      expect(valueOf(wrapper, '傾き')).toMatch(/^α 12\.0°/)
+      wrapper.unmount()
+    })
+
+    it('shows a reading that comes after the quiet straight away', async () => {
+      const wrapper = mount(PermissionPanel)
+      orient(10, 0)
+      orient(12, 400)
       await vi.advanceTimersByTimeAsync(0)
+
       expect(valueOf(wrapper, '傾き')).toMatch(/^α 12\.0°/)
       wrapper.unmount()
     })
@@ -356,6 +425,19 @@ describe('PermissionPanel', () => {
       wrapper.unmount()
     })
 
+    it('drops a reading that was held back when it is gone', async () => {
+      const wrapper = mount(PermissionPanel)
+      // Let the first lookups settle, so that only a sensor timer could be left.
+      await vi.advanceTimersByTimeAsync(0)
+      orient(10, 0)
+      orient(11, 50)
+      expect(vi.getTimerCount()).toBe(1)
+      wrapper.unmount()
+
+      // Nothing left to fire: the held-back reading has nowhere to go.
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
     it('stops listening once it is gone', async () => {
       const wrapper = mount(PermissionPanel)
       await vi.advanceTimersByTimeAsync(0)
@@ -385,6 +467,39 @@ describe('PermissionPanel', () => {
     await flushPromises()
 
     expect(valueOf(wrapper, '許可の状態', 'geolocation')).toContain('granted')
+    wrapper.unmount()
+  })
+
+  it('keeps the newest device list when an older listing answers late', async () => {
+    const lists: ((devices: unknown[]) => void)[] = []
+    enumerateDevices.mockImplementation(() => new Promise((resolve) => lists.push(resolve)))
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+    // A second listing, as a plugged-in camera or a press of 再取得 starts.
+    await button(wrapper, '再取得').trigger('click')
+
+    lists[1]([{ kind: 'videoinput', label: 'New Camera', deviceId: 'n' }])
+    await flushPromises()
+    lists[0]([{ kind: 'videoinput', label: 'Old Camera', deviceId: 'o' }])
+    await flushPromises()
+
+    expect(valueOf(wrapper, 'カメラの名前')).toBe('New Camera')
+    wrapper.unmount()
+  })
+
+  it('reads the permission from the status it holds, so a refresh cannot bring back an old state', async () => {
+    const status = { state: 'prompt', addEventListener: vi.fn(), removeEventListener: vi.fn() }
+    query.mockResolvedValue(status)
+    const wrapper = mount(PermissionPanel)
+    await flushPromises()
+
+    status.state = 'granted'
+    await button(wrapper, '再取得').trigger('click')
+    await flushPromises()
+
+    expect(valueOf(wrapper, '許可の状態', 'geolocation')).toContain('granted')
+    // Asked once per permission, not again on refresh.
+    expect(query).toHaveBeenCalledTimes(3)
     wrapper.unmount()
   })
 

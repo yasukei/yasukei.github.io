@@ -13,7 +13,6 @@ import {
   type CameraInfo,
   type DeviceName,
   type MicrophoneInfo,
-  type PermissionState,
   type PositionInfo
 } from './permission-info'
 
@@ -25,28 +24,13 @@ type PermissionName = 'geolocation' | 'camera' | 'microphone'
 /** TypeScript's PermissionName does not list 'camera' and 'microphone', which Chromium and Safari accept. */
 const descriptor = (name: PermissionName) => ({ name }) as unknown as PermissionDescriptor
 
-/** Firefox rejects 'camera' and 'microphone'; that, or any failure, is null. */
-export function queryPermission(nav: Navigator, name: PermissionName): Promise<PermissionState | null> {
-  return attempt(async () => {
-    const status = await nav.permissions.query(descriptor(name))
-    return status.state
-  })
-}
-
-/** Keeps a PermissionStatus to listen to, which is null where queryPermission is. */
-export async function watchPermission(
-  nav: Navigator,
-  name: PermissionName,
-  onChange: (state: PermissionState) => void
-): Promise<(() => void) | null> {
-  try {
-    const status = await nav.permissions.query(descriptor(name))
-    const listener = () => onChange(status.state)
-    status.addEventListener('change', listener)
-    return () => status.removeEventListener('change', listener)
-  } catch {
-    return null
-  }
+/**
+ * The PermissionStatus to read `state` from and to listen to `change` on, which
+ * stays up to date by itself. Firefox rejects 'camera' and 'microphone'; that,
+ * or any failure, is null.
+ */
+export function openPermission(nav: Navigator, name: PermissionName): Promise<PermissionStatus | null> {
+  return attempt(() => nav.permissions.query(descriptor(name)))
 }
 
 /** The current position, or an AskFailed saying why not. */
@@ -134,9 +118,16 @@ export function watchLevel(stream: MediaStream, onLevel: (level: number) => void
   const AudioContextClass = window.AudioContext
   if (!AudioContextClass) return () => {}
   const ctx = new AudioContextClass()
-  const analyser = ctx.createAnalyser()
-  analyser.fftSize = 1024
-  ctx.createMediaStreamSource(stream).connect(analyser)
+  let analyser: AnalyserNode
+  try {
+    analyser = ctx.createAnalyser()
+    analyser.fftSize = 1024
+    ctx.createMediaStreamSource(stream).connect(analyser)
+  } catch (error) {
+    // Nobody holds on to this context yet, so nobody else would close it.
+    void ctx.close()
+    throw error
+  }
   // Safari starts a context suspended unless the click is still fresh.
   void ctx.resume()
 

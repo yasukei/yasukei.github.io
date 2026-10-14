@@ -55,15 +55,17 @@ describe('geolocationSection', () => {
 
     expect(row(section, '高度').value).toBeNull()
     expect(row(section, '高度').missing).toContain('測っていない')
+    expect(row(section, '高度の誤差').missing).toContain('測っていない')
   })
 
   it('formats altitude, heading and speed where the device has them', () => {
     const section = geolocationSection(null, {
       status: 'done',
-      value: { ...POSITION, altitude: 12.34, heading: 90, speed: 1.5 }
+      value: { ...POSITION, altitude: 12.34, altitudeAccuracy: 4, heading: 90, speed: 1.5 }
     })
 
     expect(row(section, '高度').value).toBe('12.3 m')
+    expect(row(section, '高度の誤差').value).toBe('4.0 m')
     expect(row(section, '進んでいる向き').value).toBe('90.0°')
     expect(row(section, '速さ').value).toBe('1.5 m/s')
   })
@@ -196,6 +198,26 @@ describe('devicesSection', () => {
   it('tells a missing API from a machine without devices', () => {
     expect(row(devicesSection(null), 'カメラの名前').missing).toContain('未対応')
     expect(row(devicesSection([]), 'カメラの名前').missing).toBe('見つからなかった')
+    expect(row(devicesSection([]), '機器IDのハッシュ').missing).toBe('見つからなかった')
+  })
+
+  it('decides per kind whether the names are hidden, as the camera alone can be allowed', () => {
+    // What a browser shows after only the camera was allowed.
+    const section = devicesSection([
+      { kind: 'videoinput', label: 'Logitech C920', deviceId: 'a1' },
+      { kind: 'audioinput', label: '', deviceId: '' },
+      { kind: 'audiooutput', label: '', deviceId: '' }
+    ])
+
+    expect(row(section, 'カメラの名前').value).toEqual(['Logitech C920'])
+    expect(row(section, 'マイクの名前').missing).toContain('名前は空')
+    expect(row(section, 'スピーカー・ヘッドホンの名前').missing).toContain('名前は空')
+  })
+
+  it('says there is none of a kind the machine lacks, while another kind is named', () => {
+    const section = devicesSection([{ kind: 'videoinput', label: 'Logitech C920', deviceId: 'a1' }])
+
+    expect(row(section, 'マイクの名前').missing).toBe('見つからなかった')
   })
 })
 

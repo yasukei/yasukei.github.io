@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ActionButton from './ActionButton.vue'
 import { toJson, type Section, type Value } from '../lib/browser-info'
 
 /**
@@ -34,10 +35,10 @@ async function copyJson() {
 <template>
   <div class="bi-root">
     <div class="bi-toolbar">
-      <button v-if="refreshable" class="bi-btn" @click="$emit('refresh')">再取得</button>
-      <button class="bi-btn" :disabled="sections.length === 0" @click="copyJson">
+      <ActionButton v-if="refreshable" @click="$emit('refresh')">再取得</ActionButton>
+      <ActionButton :disabled="sections.length === 0" @click="copyJson">
         {{ copied ? 'Copied' : 'JSONでコピー' }}
-      </button>
+      </ActionButton>
     </div>
 
     <slot />
@@ -81,25 +82,6 @@ async function copyJson() {
 .bi-toolbar {
   display: flex;
   gap: 8px;
-}
-
-.bi-btn {
-  padding: 4px 12px;
-  border: 1px solid var(--vp-c-border);
-  border-radius: 4px;
-  background: var(--vp-c-bg-soft);
-  color: var(--vp-c-text-1);
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.bi-btn:hover:not(:disabled) {
-  background: var(--vp-c-bg-mute);
-}
-
-.bi-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .bi-loading {

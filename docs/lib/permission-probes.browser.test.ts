@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { listDevices, queryPermission, stopStream } from './permission-probes'
+import { listDevices, openPermission, stopStream } from './permission-probes'
 
 /**
  * Only what can be checked without a dialog: nothing here asks for the
@@ -7,13 +7,13 @@ import { listDevices, queryPermission, stopStream } from './permission-probes'
  * machine nobody is sitting at.
  */
 
-describe('queryPermission', () => {
-  it('answers with a state, or null where the browser will not say', async () => {
+describe('openPermission', () => {
+  it('gives a status to read, or null where the browser will not say', async () => {
     // Firefox and Safari reject some of the names; null is the documented answer then.
     for (const name of ['geolocation', 'camera', 'microphone'] as const) {
-      const state = await queryPermission(navigator, name)
+      const status = await openPermission(navigator, name)
 
-      expect([null, 'granted', 'denied', 'prompt']).toContain(state)
+      if (status) expect(['granted', 'denied', 'prompt']).toContain(status.state)
     }
   })
 })

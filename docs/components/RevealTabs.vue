@@ -160,11 +160,11 @@ onBeforeUnmount(() => {
   flex: 1 0 auto;
   padding: 8px 10px;
   border: none;
-  /* Each tab draws its own bottom line, since a wrapped row has no single
-     line to put it on; the selected tab's underline covers its own. */
+  /* Each tab draws its own divider along the very bottom, since a wrapped row
+     has no single line to put it on. It is a background, which the border is
+     painted over, so the selected tab's underline covers it. */
   border-bottom: 2px solid transparent;
-  box-shadow: inset 0 -1px var(--vp-c-divider);
-  background: none;
+  background: linear-gradient(var(--vp-c-divider), var(--vp-c-divider)) bottom / 100% 1px no-repeat border-box;
   color: var(--vp-c-text-2);
   font-size: 14px;
   font-weight: 500;

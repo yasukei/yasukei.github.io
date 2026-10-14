@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import ActionButton from './ActionButton.vue'
 import InfoPanel from './InfoPanel.vue'
 import {
   collectPermission,
@@ -20,10 +21,9 @@ import {
   listDevices,
   microphoneInfo,
   openMedia,
-  queryPermission,
+  openPermission,
   stopStream,
-  watchLevel,
-  watchPermission
+  watchLevel
 } from '../lib/permission-probes'
 
 /**
@@ -78,28 +78,51 @@ let gone = false
 /** Whether any sensor reading has arrived at all, however often the table is redrawn. */
 let sensed = false
 
+const PERMISSION_NAMES = ['geolocation', 'camera', 'microphone'] as const
+
+/** Kept for good: a PermissionStatus follows the browser's settings on its own. */
+const statuses: Partial<Record<(typeof PERMISSION_NAMES)[number], PermissionStatus>> = {}
+
+function readPermissions() {
+  permissions.value = {
+    geolocation: statuses.geolocation?.state ?? null,
+    camera: statuses.camera?.state ?? null,
+    microphone: statuses.microphone?.state ?? null
+  }
+}
+
+/** Counted per call, so a slow answer cannot overwrite the answer of a later call. */
+let listing = 0
+
 async function refresh() {
-  const [geo, cam, mic, list] = await Promise.all([
-    queryPermission(navigator, 'geolocation'),
-    queryPermission(navigator, 'camera'),
-    queryPermission(navigator, 'microphone'),
-    listDevices(navigator)
-  ])
-  permissions.value = { geolocation: geo, camera: cam, microphone: mic }
-  devices.value = list
+  readPermissions()
+  const mine = ++listing
+  const list = await listDevices(navigator)
+  if (mine === listing && !gone) devices.value = list
 }
 
 function failure(error: unknown): Ask<never> {
   return { status: 'failed', message: error instanceof AskFailed ? error.message : '取得できなかった' }
 }
 
+// Each request is counted, and only the latest one's answer is used. Firefox
+// never answers a dialog that was closed without choosing, so the button has to
+// stay usable while a request is pending, and a later press must not be
+// overwritten by the earlier one coming back after all.
+let positionAsk = 0
+let cameraAsk = 0
+let micAsk = 0
+
 async function askPosition() {
+  const mine = ++positionAsk
   geolocation.value = { status: 'asking' }
+  let answer: Ask<PositionInfo>
   try {
-    geolocation.value = { status: 'done', value: await getPosition(navigator) }
+    answer = { status: 'done', value: await getPosition(navigator) }
   } catch (error) {
-    geolocation.value = failure(error)
+    answer = failure(error)
   }
+  if (mine === positionAsk && !gone) geolocation.value = answer
   refresh()
 }
 
@@ -111,16 +134,17 @@ function stopCamera() {
 }
 
 async function startCamera() {
+  const mine = ++cameraAsk
   camera.value = { status: 'asking' }
   try {
     const stream = await openMedia(navigator, { video: true })
-    if (gone) return stopStream(stream)
+    if (gone || mine !== cameraAsk) return stopStream(stream)
     cameraStream = stream
     stream.getVideoTracks()[0]?.addEventListener('ended', stopCamera)
     if (video.value) video.value.srcObject = stream
     camera.value = { status: 'done', value: cameraInfo(stream) }
   } catch (error) {
-    camera.value = failure(error)
+    if (mine === cameraAsk) camera.value = failure(error)
   }
   refresh()
 }
@@ -134,10 +158,11 @@ function stopMicrophone() {
 }
 
 async function startMicrophone() {
+  const mine = ++micAsk
   microphone.value = { status: 'asking' }
   try {
     const stream = await openMedia(navigator, { audio: true })
-    if (gone) return stopStream(stream)
+    if (gone || mine !== micAsk) return stopStream(stream)
     micStream = stream
     stream.getAudioTracks()[0]?.addEventListener('ended', stopMicrophone)
     try {
@@ -147,7 +172,7 @@ async function startMicrophone() {
     }
     microphone.value = { status: 'done', value: microphoneInfo(stream) }
   } catch (error) {
-    microphone.value = failure(error)
+    if (mine === micAsk) microphone.value = failure(error)
   }
   refresh()
 }
@@ -173,20 +198,42 @@ async function askSensors() {
   askingSensors.value = false
 }
 
-/** Keeps the latest reading of one sensor, passing on at most one per SENSOR_REDRAW_MS. */
+const stops: (() => void)[] = []
+
+/**
+ * Keeps the latest reading of one sensor. The first of a burst is passed on at
+ * once and the last one a moment later, so that a sensor that stops reporting
+ * leaves its final value in the table rather than one from mid-movement.
+ */
 function onSensor<T>(read: (e: Event) => T | null, keep: (value: T) => void) {
   let last = -Infinity
+  let pending: T | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  stops.push(() => clearTimeout(timer))
+
+  const flush = () => {
+    timer = undefined
+    if (pending === null) return
+    keep(pending)
+    pending = null
+  }
+
   return (e: Event) => {
     const value = read(e)
     if (value === null) return
     sensed = true
-    if (e.timeStamp - last < SENSOR_REDRAW_MS) return
-    last = e.timeStamp
-    keep(value)
+    if (e.timeStamp - last >= SENSOR_REDRAW_MS) {
+      last = e.timeStamp
+      clearTimeout(timer)
+      timer = undefined
+      pending = null
+      keep(value)
+      return
+    }
+    pending = value
+    timer ??= setTimeout(flush, SENSOR_REDRAW_MS)
   }
 }
-
-const stops: (() => void)[] = []
 
 onMounted(async () => {
   refresh()
@@ -224,15 +271,17 @@ onMounted(async () => {
   // A change in the browser's own settings, or a plugged-in camera, shows up at once.
   navigator.mediaDevices?.addEventListener?.('devicechange', refresh)
   stops.push(() => navigator.mediaDevices?.removeEventListener?.('devicechange', refresh))
-  for (const name of ['geolocation', 'camera', 'microphone'] as const) {
-    const stop = await watchPermission(navigator, name, (state) => {
-      permissions.value = { ...permissions.value, [name]: state }
+  await Promise.all(
+    PERMISSION_NAMES.map(async (name) => {
+      const status = await openPermission(navigator, name)
+      // Left while waiting for the answer: nobody will unmount again to stop listening.
+      if (!status || gone) return
+      statuses[name] = status
+      status.addEventListener('change', readPermissions)
+      stops.push(() => status.removeEventListener('change', readPermissions))
+      readPermissions()
     })
-    if (!stop) continue
-    // Left while waiting for the answer: nobody will unmount again to stop it.
-    if (gone) stop()
-    else stops.push(stop)
-  }
+  )
 })
 
 onBeforeUnmount(() => {
@@ -247,22 +296,18 @@ onBeforeUnmount(() => {
   <InfoPanel :sections="sections" refreshable @refresh="refresh">
     <template #before-geolocation>
       <div class="pp-ask">
-        <button class="pp-btn" :disabled="geolocation.status === 'asking'" @click="askPosition">
+        <ActionButton @click="askPosition">
           {{ geolocation.status === 'done' ? '現在地をもう一度取得' : '現在地の許可をリクエスト' }}
-        </button>
+        </ActionButton>
       </div>
     </template>
 
     <template #before-camera>
       <div>
         <div class="pp-ask">
-          <button
-            class="pp-btn"
-            :disabled="camera.status === 'asking'"
-            @click="camera.status === 'done' ? stopCamera() : startCamera()"
-          >
+          <ActionButton @click="camera.status === 'done' ? stopCamera() : startCamera()">
             {{ camera.status === 'done' ? 'カメラを止める' : 'カメラの許可をリクエスト' }}
-          </button>
+          </ActionButton>
         </div>
         <!-- Always mounted so the stream has somewhere to go; only shown while it runs. -->
         <video
@@ -280,13 +325,9 @@ onBeforeUnmount(() => {
     <template #before-microphone>
       <div>
         <div class="pp-ask">
-          <button
-            class="pp-btn"
-            :disabled="microphone.status === 'asking'"
-            @click="microphone.status === 'done' ? stopMicrophone() : startMicrophone()"
-          >
+          <ActionButton @click="microphone.status === 'done' ? stopMicrophone() : startMicrophone()">
             {{ microphone.status === 'done' ? 'マイクを止める' : 'マイクの許可をリクエスト' }}
-          </button>
+          </ActionButton>
         </div>
         <div v-if="microphone.status === 'done'" class="pp-meter" role="img" aria-label="マイクに入っている音の大きさ">
           <div class="pp-meter-bar" :style="{ width: `${level}%` }"></div>
@@ -296,7 +337,7 @@ onBeforeUnmount(() => {
 
     <template #before-sensors>
       <div v-if="sensorsNeedAsking" class="pp-ask">
-        <button class="pp-btn" :disabled="askingSensors" @click="askSensors">傾き・加速度センサーの許可をリクエスト</button>
+        <ActionButton :disabled="askingSensors" @click="askSensors">傾き・加速度センサーの許可をリクエスト</ActionButton>
         <span class="pp-status" role="status">{{ askingSensors ? '確認中…' : sensorStatus }}</span>
       </div>
     </template>
@@ -309,25 +350,6 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 12px;
-}
-
-.pp-btn {
-  padding: 4px 12px;
-  border: 1px solid var(--vp-c-border);
-  border-radius: 4px;
-  background: var(--vp-c-bg-soft);
-  color: var(--vp-c-text-1);
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.pp-btn:hover:not(:disabled) {
-  background: var(--vp-c-bg-mute);
-}
-
-.pp-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .pp-status {

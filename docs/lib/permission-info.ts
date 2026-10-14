@@ -211,6 +211,7 @@ export function geolocationSection(permission: PermissionState | null, ask: Ask<
       askRow(ask, '高度', api('altitude'), (p) => meters(p.altitude, 1), {
         note: 'GPS付きの端末だけが答える。'
       }),
+      askRow(ask, '高度の誤差', api('altitudeAccuracy'), (p) => meters(p.altitudeAccuracy, 1)),
       askRow(ask, '進んでいる向き', api('heading'), (p) => degrees(p.heading), {
         note: '北を0°として時計回り。動いていないときや、測れない端末では取れない。'
       }),
@@ -305,19 +306,19 @@ export const DEVICE_KINDS: { kind: string; label: string }[] = [
 ]
 
 export function devicesSection(devices: DeviceName[] | null): Section {
-  const named = (kind: string) => devices?.filter((d) => d.kind === kind && d.label !== '').map((d) => d.label)
-  const unnamed = devices && devices.length > 0 && devices.every((d) => d.label === '')
+  /** Why a kind has no names: the browser hides them, or there is no such device. */
+  const missingOf = (kind: string): string => {
+    if (!devices) return '取得できない (このブラウザは未対応、または https でないページ)'
+    const ofKind = devices.filter((d) => d.kind === kind)
+    return ofKind.length > 0 ? '名前は空 (許可するとアクセスできる)' : '見つからなかった'
+  }
   const rows: Row[] = DEVICE_KINDS.map(({ kind, label }) => {
-    const labels = named(kind)
+    const labels = devices?.filter((d) => d.kind === kind && d.label !== '').map((d) => d.label)
     return {
       label,
       api: `(await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === '${kind}').map(d => d.label)`,
       value: labels && labels.length > 0 ? labels : null,
-      missing: !devices
-        ? '取得できない (このブラウザは未対応、または https でないページ)'
-        : unnamed
-          ? '名前は空 (カメラかマイクを許可するとアクセスできる)'
-          : '見つからなかった',
+      missing: missingOf(kind),
       note:
         kind === 'videoinput'
           ? '"Logitech C920"、"Integrated Camera" のように、機種名がそのまま見える。仮想カメラ(OBS など)を入れていることも分かる。'
@@ -331,7 +332,11 @@ export function devicesSection(devices: DeviceName[] | null): Section {
     label: '機器IDのハッシュ',
     api: 'device.deviceId',
     value: ids && ids.length > 0 ? fnv1a(ids.join(',')) : null,
-    missing: devices ? '空 (許可するとアクセスできる)' : undefined,
+    missing: !devices
+      ? undefined
+      : devices.length === 0
+        ? '見つからなかった'
+        : '空 (許可するとアクセスできる)',
     note: '機器IDはサイトごとに固定で、Cookie を消すまで変わらないので、同じ人かどうかを見分ける目印に使える。サイトが違えば別の値になる。'
   })
   return { id: 'device-names', title: '機器の名前', rows }
