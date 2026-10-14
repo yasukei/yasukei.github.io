@@ -161,3 +161,18 @@ describe('BrowserInfo', () => {
     })
   })
 })
+
+describe('BrowserInfo install', () => {
+  it('lists its own sections, without names where nothing could be measured', async () => {
+    // happy-dom has no canvas to measure fonts with.
+    const wrapper = mount(BrowserInfo, { props: { category: 'install' as const } })
+    await flushPromises()
+
+    expect(wrapper.findAll('.bi-section').map((s) => s.attributes('data-section'))).toEqual([
+      'fonts',
+      'voices',
+      'storage'
+    ])
+    expect(valueOf(wrapper, 'インストールされているフォント')).toContain('取得できない')
+  })
+})

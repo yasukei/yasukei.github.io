@@ -34,7 +34,7 @@ interface ProbeNavigator {
 const TIMEOUT_MS = 3000
 
 /** Runs a probe, turning a throw, a rejection or a timeout into null. */
-async function attempt<T>(probe: () => T | Promise<T>): Promise<T | null> {
+export async function attempt<T>(probe: () => T | Promise<T>): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<null>((resolve) => {
     timer = setTimeout(() => resolve(null), TIMEOUT_MS)

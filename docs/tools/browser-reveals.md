@@ -18,3 +18,9 @@ import BrowserInfo from '../components/BrowserInfo.vue'
 GPUの機種や、描画・音声処理の結果に出るわずかな差は、Cookieを消しても変わらないので、ブラウザフィンガープリント(端末の識別)によく使われます。
 
 <BrowserInfo category="hardware" />
+
+## インストール環境
+
+何が入っているかは、OSや言語だけでなく、使っているソフトや仕事の見当まで付けられる材料になります。
+
+<BrowserInfo category="install" />

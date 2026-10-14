@@ -33,3 +33,14 @@ test('reads the hardware it runs on', async ({ page }) => {
   await expect(canvasRow.locator('.bi-text')).toHaveText(/^[0-9a-f]{8}$/)
   await expect(canvasRow.locator('img')).toBeVisible()
 })
+
+test('finds installed fonts', async ({ page }) => {
+  await page.goto('/tools/browser-reveals')
+
+  // Whatever the machine, at least one candidate is installed and not all are.
+  const counted = page.locator('[data-section="fonts"] .bi-row', { hasText: '見つかった数' }).locator('.bi-text')
+  await expect(counted).toHaveText(/^\d+ \/ \d+$/)
+  const [found, total] = (await counted.textContent())!.split(' / ').map(Number)
+  expect(found).toBeGreaterThan(0)
+  expect(found).toBeLessThan(total)
+})

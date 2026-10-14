@@ -11,8 +11,10 @@ import {
 } from '../lib/browser-info'
 import { INPUT_FEATURES, SCREEN_FEATURES, collectHardware } from '../lib/hardware-info'
 import { runProbes } from '../lib/hardware-probes'
+import { collectInstall } from '../lib/install-info'
+import { runInstallProbes } from '../lib/install-probes'
 
-type Category = 'browser' | 'hardware'
+type Category = 'browser' | 'hardware' | 'install'
 
 const props = defineProps<{ category: Category }>()
 
@@ -42,6 +44,11 @@ const SOURCES: Record<Category, CategorySource> = {
         probes: await runProbes(navigator)
       }),
     media: [...SCREEN_FEATURES, ...INPUT_FEATURES],
+    events: []
+  },
+  install: {
+    collect: async () => collectInstall(await runInstallProbes(navigator)),
+    media: [],
     events: []
   }
 }
@@ -117,7 +124,7 @@ async function copyJson() {
       <div v-for="row in section.rows" :key="row.label" class="bi-row">
         <div class="bi-label">
           <div class="bi-label-text">{{ row.label }}</div>
-          <code class="bi-api">{{ row.api }}</code>
+          <code v-if="row.api" class="bi-api">{{ row.api }}</code>
         </div>
         <div class="bi-value">
           <span v-if="isUnavailable(row.value)" class="bi-na">取得できない (このブラウザは未対応)</span>
