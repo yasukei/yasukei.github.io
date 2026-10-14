@@ -3,9 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import { playwright } from '@vitest/browser-playwright'
 
 /**
- * Two suites, told apart by file name: `unit` needs nothing installed and is
- * what `npm test` and CI run, `browser` needs browsers downloaded first and so
- * is kept off the default path. What each is for is in the README.
+ * Two suites, told apart by file name: `unit` needs nothing installed, `browser`
+ * needs the Playwright browsers. `npm test` runs both, then the e2e suite in
+ * e2e/. What each is for is in the README.
  */
 
 export default defineConfig({

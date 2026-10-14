@@ -8,12 +8,13 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "typecheck": "vue-tsc --noEmit",
-    "test": "vitest run --project unit",
+    "test": "vitest run && playwright test",
     "test:watch": "vitest --project unit",
     "dev": "npm run docs:dev",
     "build": "npm run docs:build",
     "test:browser": "vitest run --project browser",
-    "test:all": "vitest run"
+    "test:e2e": "playwright test",
+    "test:unit": "vitest run --project unit"
   },
   "repository": {
     "type": "git",
@@ -31,6 +32,7 @@
     "node": ">=26"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.4.1",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vitest/browser": "^5.0.1",

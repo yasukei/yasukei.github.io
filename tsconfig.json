@@ -21,7 +21,9 @@
     "docs/**/*.mts",
     "docs/**/*.vue",
     "test/**/*.ts",
+    "e2e/**/*.ts",
     "vitest.config.ts",
+    "playwright.config.ts",
     // Listed explicitly: `include` globs skip dot-directories, so
     // docs/**/*.mts alone leaves the VitePress config unchecked.
     "docs/.vitepress/config.mts"
