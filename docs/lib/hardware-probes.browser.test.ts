@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { probeAudio, probeCanvas, probeDevices, probeWebGL, runProbes } from './hardware-probes'
+import { attempt, probeAudio, probeCanvas, probeDevices, probeWebGL, runProbes } from './hardware-probes'
 
 /**
  * A fingerprint is only worth anything if it comes out the same every time on
@@ -42,7 +42,9 @@ describe('probeWebGL', () => {
 
 describe('probeDevices', () => {
   it('counts without names, since nothing was allowed', async () => {
-    const counts = await probeDevices(navigator)
+    // enumerateDevices() may wait until the page is visible, and in Firefox on
+    // the CI runner it never settles. The page goes through attempt() too.
+    const counts = await attempt(() => probeDevices(navigator))
 
     // No permission was asked for, so no device may be named.
     if (counts) expect(counts.labelled).toBe(0)
