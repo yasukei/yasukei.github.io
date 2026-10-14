@@ -18,7 +18,15 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        // Fake camera and microphone, and the permission dialog answered yes,
+        // for the permission tab. Chromium is the only engine that offers either.
+        launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] }
+      }
+    },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } }
   ],
