@@ -92,7 +92,7 @@ describe('screenSection', () => {
     expect(row(section, '拡大率').value).toBe('1.5')
     expect(row(section, '物理ピクセル数 (推定)').value).toBe('2880 × 1620')
     expect(row(section, '利用可能領域').value).toBe('1920 × 1032')
-    expect(row(section, 'タスクバーなどの大きさ').value).toBe('縦 48px / 横 0px')
+    expect(row(section, 'タスクバーなどの大きさ').value).toBe('横 0px / 縦 48px')
     expect(row(section, '色深度').value).toBe('24 bit')
     expect(row(section, '画面の向き').value).toBe('landscape-primary')
   })

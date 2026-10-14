@@ -90,26 +90,28 @@ export function windowSection(env: PageEnv): Section {
     title: 'ウィンドウ',
     rows: [
       {
-        label: 'ページが表示されている範囲',
-        api: 'innerWidth × innerHeight',
-        value: `${env.innerWidth} × ${env.innerHeight}`
-      },
-      {
         label: 'ウィンドウ全体',
         api: 'outerWidth × outerHeight',
-        value: `${env.outerWidth} × ${env.outerHeight}`
+        value: `${env.outerWidth} × ${env.outerHeight}`,
+        note: 'タブの列、アドレスバー、ウィンドウの縁まで含めたブラウザのウィンドウ丸ごと。'
       },
       {
-        label: 'ブラウザの枠の大きさ',
-        api: 'outerHeight - innerHeight',
-        value: `縦 ${env.outerHeight - env.innerHeight}px / 横 ${env.outerWidth - env.innerWidth}px`,
-        note: 'タブやアドレスバー、ブックマークバーの有無で変わる。横や縦に大きな差があると、開発者ツールを開いていると判定するサイトもある。'
+        label: 'ページが表示されている範囲',
+        api: 'innerWidth × innerHeight',
+        value: `${env.innerWidth} × ${env.innerHeight}`,
+        note: 'Webページが描かれている部分だけ。スクロールバーはこちらに含まれる。'
+      },
+      {
+        label: 'ウィンドウ全体 − ページ表示範囲 = ブラウザのUI部分',
+        api: 'outerWidth - innerWidth, outerHeight - innerHeight',
+        value: `横 ${env.outerWidth - env.innerWidth}px / 縦 ${env.outerHeight - env.innerHeight}px`,
+        note: 'ブラウザ自身のUIが占めている大きさ。縦はタブの列やアドレスバー、ブックマークバーの有無で、横はサイドパネルやウィンドウの縁で変わる。開発者ツールを開くとページ側だけが縮んで差が急に大きくなるため、これで開発者ツールを開いていると判定するサイトもある。リサイズ中は2つの値の更新がずれて1〜2px揺れることがある。'
       },
       {
         label: '画面上の位置',
         api: 'screenX, screenY',
         value: `${env.screenX}, ${env.screenY}`,
-        note: 'ウィンドウを動かすと1秒以内に変わる。マルチモニタではマイナスや画面幅より大きな値になり、モニタの並びが推測できる。'
+        note: 'ウィンドウを動かすと1秒以内に変わる。マルチモニタではマイナスや画面幅より大きな値になり、モニタの並びが推測できる。ただし Linux の Wayland では、OSがアプリにウィンドウの位置を教えない設計なので 0, 0 のままになる(Chrome でタブをドラッグしたときだけ変わることがある)。'
       }
     ]
   }

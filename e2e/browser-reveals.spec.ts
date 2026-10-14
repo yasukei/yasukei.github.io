@@ -50,7 +50,7 @@ test('reads the state of its own window', async ({ page }) => {
 
   const viewport = page.viewportSize()!
   const section = page.locator('[data-section="window"]')
-  await expect(section.locator('.bi-row', { hasText: 'innerWidth' }).locator('.bi-text')).toHaveText(
+  await expect(section.locator('.bi-row', { hasText: 'innerWidth × innerHeight' }).locator('.bi-text')).toHaveText(
     `${viewport.width} × ${viewport.height}`
   )
   await expect(

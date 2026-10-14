@@ -59,9 +59,15 @@ describe('windowSection', () => {
   it('shows the size, the frame around the page and the position', () => {
     const section = windowSection(ENV)
 
-    expect(row(section, 'ページが表示されている範囲').value).toBe('1280 × 720')
+    expect(section.rows.slice(0, 3).map((r) => r.label)).toEqual([
+      'ウィンドウ全体',
+      'ページが表示されている範囲',
+      'ウィンドウ全体 − ページ表示範囲 = ブラウザのUI部分'
+    ])
     expect(row(section, 'ウィンドウ全体').value).toBe('1296 × 840')
-    expect(row(section, 'ブラウザの枠の大きさ').value).toBe('縦 120px / 横 16px')
+    expect(row(section, 'ページが表示されている範囲').value).toBe('1280 × 720')
+    // Width first, like every other size on the page.
+    expect(row(section, 'ウィンドウ全体 − ページ表示範囲 = ブラウザのUI部分').value).toBe('横 16px / 縦 120px')
     // A window on a monitor to the left of the main one.
     expect(row(section, '画面上の位置').value).toBe('-1920, 0')
   })

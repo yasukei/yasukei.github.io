@@ -209,8 +209,8 @@ export function screenSection(screen: ScreenLike, devicePixelRatio: number, matc
       },
       {
         label: 'タスクバーなどの大きさ',
-        api: 'screen.height - screen.availHeight',
-        value: `縦 ${screen.height - screen.availHeight}px / 横 ${screen.width - screen.availWidth}px`,
+        api: 'screen.width - screen.availWidth, screen.height - screen.availHeight',
+        value: `横 ${screen.width - screen.availWidth}px / 縦 ${screen.height - screen.availHeight}px`,
         note: 'この差からタスクバーの位置や大きさ、OSの見当がつく(Windows 11 のタスクバーは48px前後、macOS のメニューバーは25px前後など)。'
       },
       {
