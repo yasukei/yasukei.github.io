@@ -60,6 +60,7 @@ function generateSidebarItems(dirPath: string, relativePath: string): any[] {
 export default defineConfig({
   title: "yasukei.github.io",
   description: "notes, tools, etc.",
+  outDir: '../dist',
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
