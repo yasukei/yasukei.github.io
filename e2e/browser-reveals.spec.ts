@@ -1,4 +1,8 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+async function openTab(page: Page, name: string) {
+  await page.getByRole('tab', { name }).click()
+}
 
 test('reads the browser it is opened in', async ({ page, browserName }) => {
   await page.goto('/tools/browser-reveals')
@@ -23,6 +27,7 @@ test('reads the browser it is opened in', async ({ page, browserName }) => {
 
 test('reads the hardware it runs on', async ({ page }) => {
   await page.goto('/tools/browser-reveals')
+  await openTab(page, 'ハードウェア')
 
   const cores = await page.evaluate(() => navigator.hardwareConcurrency)
   const coresRow = page.locator('.bi-row', { hasText: 'navigator.hardwareConcurrency' })
@@ -36,6 +41,7 @@ test('reads the hardware it runs on', async ({ page }) => {
 
 test('finds installed fonts', async ({ page }) => {
   await page.goto('/tools/browser-reveals')
+  await openTab(page, 'インストール環境')
 
   // Whatever the machine, at least one candidate is installed and not all are.
   const counted = page.locator('[data-section="fonts"] .bi-row', { hasText: '見つかった数' }).locator('.bi-text')
@@ -47,6 +53,7 @@ test('finds installed fonts', async ({ page }) => {
 
 test('reads the state of its own window', async ({ page }) => {
   await page.goto('/tools/browser-reveals')
+  await openTab(page, 'ウィンドウとページ')
 
   const viewport = page.viewportSize()!
   const section = page.locator('[data-section="window"]')
@@ -63,8 +70,10 @@ test('records the mouse and the typing as they happen', async ({ page }) => {
   await page.goto('/tools/browser-reveals')
   const row = (label: string) => page.locator('.bi-row', { hasText: label }).locator('.bi-value')
 
+  // Moved while another tab is open: the log records from the moment the page opens.
   await page.mouse.move(100, 100)
   await page.mouse.move(300, 250, { steps: 10 })
+  await openTab(page, '操作の情報')
   await expect(row('動かした距離')).toHaveText(/^[1-9]\d* px/)
 
   const field = page.getByLabel('試しに入力する欄')
@@ -72,4 +81,14 @@ test('records the mouse and the typing as they happen', async ({ page }) => {
   await field.pressSequentially('hello', { delay: 30 })
   await expect(row('入力欄の中身 (送信前)')).toHaveText(/^hello/)
   await expect(row('キーを押している時間の平均')).toHaveText(/^\d+ ms/)
+})
+
+test('opens the tab a link points at, and keeps the choice in the URL', async ({ page }) => {
+  await page.goto('/tools/browser-reveals#install')
+  await expect(page.getByRole('tab', { name: 'インストール環境' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('[data-section="fonts"]')).toBeVisible()
+  await expect(page.locator('[data-section="user-agent"]')).toBeHidden()
+
+  await openTab(page, 'ハードウェア')
+  await expect(page).toHaveURL(/#hardware$/)
 })
