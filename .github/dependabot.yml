@@ -36,15 +36,19 @@ updates:
       # cicd.yml; it moves when that does, by hand.
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
-    # A group takes an update before any group below it can.
+    # An update that fits more than one group goes to the one Dependabot judges
+    # most specific, not the first listed. A name written out beats a group with
+    # only update-types, but that group beats a wildcard, so "@vitest/*" lost
+    # @vitest/browser to npm-minor-patch. Excluding the families from
+    # npm-minor-patch leaves each of them a single group to go to.
     groups:
       # These are released in lockstep and require each other's exact version,
       # so a major split across separate pull requests would fail npm ci in
-      # every one of them. The names are spelled out: "@vitest/*" matched
-      # neither @vitest/ package, and both went to npm-minor-patch instead.
+      # every one of them.
       vitest:
-        patterns: ["vitest", "@vitest/browser", "@vitest/browser-playwright"]
+        patterns: ["vitest", "@vitest/*"]
       playwright:
         patterns: ["playwright", "@playwright/test"]
       npm-minor-patch:
         update-types: [minor, patch]
+        exclude-patterns: ["vitest", "@vitest/*", "playwright", "@playwright/test"]
