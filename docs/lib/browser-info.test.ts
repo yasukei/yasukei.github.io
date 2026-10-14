@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   DISPLAY_FEATURES,
   clientHintsSection,
+  collectBrowserOs,
   displaySection,
   formatUtcOffset,
   localeSection,
@@ -245,6 +246,13 @@ describe('mediaValue / displaySection', () => {
     expect(mediaValue(matching(), data)).toBeNull()
   })
 
+  it('reports every match for a feature that can have several', () => {
+    const feature = { label: 'x', feature: 'any-pointer', values: ['fine', 'coarse'], all: true }
+
+    expect(mediaValue(matching('(any-pointer: fine)', '(any-pointer: coarse)'), feature)).toEqual(['fine', 'coarse'])
+    expect(mediaValue(matching(), feature)).toBeNull()
+  })
+
   it('has one row per feature', () => {
     const section = displaySection(
       matching('(prefers-color-scheme: dark)', '(prefers-reduced-motion: reduce)', '(forced-colors: none)')
@@ -277,5 +285,13 @@ describe('toJson', () => {
     ])
 
     expect(JSON.parse(json)).toEqual({ A: { one: '1', list: ['p', 'q'], none: null } })
+  })
+})
+
+describe('collectBrowserOs', () => {
+  it('puts the client hints right after the UA string they replace', async () => {
+    const sections = await collectBrowserOs({ userAgent: UA.firefoxLinux }, () => ({ matches: false }), new Date())
+
+    expect(sections.map((s) => s.id)).toEqual(['user-agent', 'client-hints', 'locale', 'privacy', 'display'])
   })
 })

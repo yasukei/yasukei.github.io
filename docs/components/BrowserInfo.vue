@@ -2,41 +2,61 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   DISPLAY_FEATURES,
-  clientHintsSection,
-  displaySection,
-  localeSection,
+  collectBrowserOs,
   mediaQueryOf,
-  privacySection,
   toJson,
-  userAgentSection,
+  type MediaFeature,
   type Section,
   type Value
 } from '../lib/browser-info'
+import { INPUT_FEATURES, SCREEN_FEATURES, collectHardware } from '../lib/hardware-info'
+import { runProbes } from '../lib/hardware-probes'
+
+type Category = 'browser' | 'hardware'
+
+const props = defineProps<{ category: Category }>()
+
+interface CategorySource {
+  collect: () => Promise<Section[]>
+  /** Media features whose change re-collects the category. */
+  media: MediaFeature[]
+  /** Window events that do the same. */
+  events: string[]
+}
+
+const matchMedia = (query: string) => window.matchMedia(query)
+
+const SOURCES: Record<Category, CategorySource> = {
+  browser: {
+    collect: () => collectBrowserOs(navigator, matchMedia, new Date()),
+    media: DISPLAY_FEATURES,
+    events: ['languagechange']
+  },
+  hardware: {
+    collect: async () =>
+      collectHardware({
+        nav: navigator,
+        screen,
+        devicePixelRatio: window.devicePixelRatio,
+        matchMedia,
+        probes: await runProbes(navigator)
+      }),
+    media: [...SCREEN_FEATURES, ...INPUT_FEATURES],
+    events: []
+  }
+}
 
 // Empty until mounted: the page is prerendered at build time, where there is
 // no navigator, and what the build machine would report is not the reader's.
 const sections = ref<Section[]>([])
 
-function collect(): Section[] {
-  return [
-    userAgentSection(navigator),
-    localeSection(navigator, new Date()),
-    privacySection(navigator),
-    displaySection(window.matchMedia.bind(window))
-  ]
-}
-
-/** Bumped per refresh, so a slow client-hints answer cannot overwrite a newer one. */
+/** Bumped per refresh, so a slow answer cannot overwrite a newer one. */
 let generation = 0
 
 async function refresh() {
   const mine = ++generation
-  const sync = collect()
-  sections.value = sync
-  const hints = await clientHintsSection(navigator)
-  if (mine !== generation) return
-  // Client hints read best right after the UA string they replace.
-  sections.value = [sync[0], hints, ...sync.slice(1)]
+  const collected = await SOURCES[props.category].collect()
+  if (mine === generation) sections.value = collected
 }
 
 // Changing the OS theme or language while the page is open updates the table,
@@ -46,15 +66,18 @@ const stops: (() => void)[] = []
 onMounted(() => {
   refresh()
 
-  for (const feature of DISPLAY_FEATURES) {
+  const source = SOURCES[props.category]
+  for (const feature of source.media) {
     for (const value of feature.values) {
       const list = window.matchMedia(mediaQueryOf(feature.feature, value))
       list.addEventListener('change', refresh)
       stops.push(() => list.removeEventListener('change', refresh))
     }
   }
-  window.addEventListener('languagechange', refresh)
-  stops.push(() => window.removeEventListener('languagechange', refresh))
+  for (const event of source.events) {
+    window.addEventListener(event, refresh)
+    stops.push(() => window.removeEventListener(event, refresh))
+  }
 })
 
 onBeforeUnmount(() => {
@@ -103,6 +126,7 @@ async function copyJson() {
           </ul>
           <span v-else-if="row.value === ''" class="bi-na">(空文字)</span>
           <span v-else class="bi-text">{{ row.value }}</span>
+          <img v-if="row.image" :src="row.image" class="bi-image" :alt="`${row.label}の画像`" />
           <div v-if="row.note" class="bi-note">{{ row.note }}</div>
         </div>
       </div>
@@ -210,6 +234,15 @@ async function copyJson() {
 
 .bi-list li {
   margin: 0;
+}
+
+.bi-image {
+  display: block;
+  max-width: 100%;
+  margin-top: 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
+  background: repeating-conic-gradient(var(--vp-c-bg-soft) 0 25%, var(--vp-c-bg) 0 50%) 0 0 / 12px 12px;
 }
 
 .bi-na {

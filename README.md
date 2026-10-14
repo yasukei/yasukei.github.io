@@ -42,6 +42,7 @@ docs/                      Everything published to the site
 ├── components/            Vue components that the pages mount
 ├── lib/                   Plain TypeScript behind the tools; no Vue, and no
 │                          DOM except canvas-resize.ts (the canvas pipeline)
+│                          and hardware-probes.ts (canvas, WebGL, audio)
 └── utils.ts               Shared helpers behind both index pages
 test/                      Checks that span the whole repository
 e2e/                       Smoke tests that drive the built site in a browser
@@ -69,8 +70,9 @@ component thin and the logic reachable from a test.
 - **Components** — Vue components mounted with a DOM: state, events, lifecycle.
 - **Repository-wide** — links and heading anchors across every markdown file, and
   the contracts every tool page has to keep. New pages are picked up automatically.
-- **Browser** — what happy-dom cannot do: real canvas pixels, and how the engines
-  differ when downscaling (see `stepPlan` in `docs/lib/image-resize.ts`).
+- **Browser** — what happy-dom cannot do: real canvas pixels, how the engines
+  differ when downscaling (see `stepPlan` in `docs/lib/image-resize.ts`), and
+  that the fingerprint probes in `docs/lib/hardware-probes.ts` are repeatable.
 - **E2E** — smoke tests against the built site: choose an image on a tool page and
   check that the downloaded file comes out at the right size. `npm run test:e2e`
   builds the site first and serves it with `docs:preview`.

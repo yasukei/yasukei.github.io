@@ -21,6 +21,8 @@ export interface Row {
   api: string
   value: Value
   note?: string
+  /** A data URL drawn by the probe, shown next to the value. */
+  image?: string
 }
 
 export interface Section {
@@ -110,7 +112,7 @@ export function parseUserAgent(ua: string): ParsedUserAgent {
   }
 }
 
-function joinName(name: string | null, version: string | null): string | null {
+export function joinName(name: string | null, version: string | null): string | null {
   if (name === null) return null
   return version ? `${name} ${version}` : name
 }
@@ -396,6 +398,8 @@ export interface MediaFeature {
   feature: string
   /** Every value the spec defines; the first that matches is the answer. */
   values: string[]
+  /** Report every value that matches, for features where several can (any-pointer). */
+  all?: boolean
   note?: string
 }
 
@@ -445,22 +449,43 @@ export function mediaQueryOf(feature: string, value: string): string {
   return `(${feature}: ${value})`
 }
 
-/** The value that matches, or null when none does, i.e. the browser does not know the feature. */
-export function mediaValue(matchMedia: MatchMedia, feature: MediaFeature): string | null {
-  return feature.values.find((value) => matchMedia(mediaQueryOf(feature.feature, value)).matches) ?? null
+/**
+ * The value that matches (or every one, for an `all` feature), or null when
+ * none does, i.e. the browser does not know the feature.
+ */
+export function mediaValue(matchMedia: MatchMedia, feature: MediaFeature): Value {
+  const matched = feature.values.filter((value) => matchMedia(mediaQueryOf(feature.feature, value)).matches)
+  if (matched.length === 0) return null
+  return feature.all ? matched : matched[0]
+}
+
+export function mediaRow(matchMedia: MatchMedia, feature: MediaFeature): Row {
+  return {
+    label: feature.label,
+    api: `matchMedia('${mediaQueryOf(feature.feature, '…')}')`,
+    value: mediaValue(matchMedia, feature),
+    note: feature.note
+  }
 }
 
 export function displaySection(matchMedia: MatchMedia): Section {
   return {
     id: 'display',
     title: '表示・アクセシビリティ設定',
-    rows: DISPLAY_FEATURES.map((feature) => ({
-      label: feature.label,
-      api: `matchMedia('${mediaQueryOf(feature.feature, '…')}')`,
-      value: mediaValue(matchMedia, feature),
-      note: feature.note
-    }))
+    rows: DISPLAY_FEATURES.map((feature) => mediaRow(matchMedia, feature))
   }
+}
+
+/** Every section of the browser and OS category, in the order shown. */
+export async function collectBrowserOs(nav: NavigatorLike, matchMedia: MatchMedia, now: Date): Promise<Section[]> {
+  return [
+    userAgentSection(nav),
+    // Client hints read best right after the UA string they replace.
+    await clientHintsSection(nav),
+    localeSection(nav, now),
+    privacySection(nav),
+    displaySection(matchMedia)
+  ]
 }
 
 // ---------------------------------------------------------------------------
@@ -474,10 +499,10 @@ export function toJson(sections: Section[]): string {
   return JSON.stringify(out, null, 2)
 }
 
-function str(value: unknown): string | null {
+export function str(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
 
-function bool(value: unknown): string | null {
+export function bool(value: unknown): string | null {
   return typeof value === 'boolean' ? String(value) : null
 }

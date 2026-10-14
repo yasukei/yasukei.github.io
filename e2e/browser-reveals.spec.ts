@@ -20,3 +20,16 @@ test('reads the browser it is opened in', async ({ page, browserName }) => {
     await expect(platformRow).toContainText('取得できない')
   }
 })
+
+test('reads the hardware it runs on', async ({ page }) => {
+  await page.goto('/tools/browser-reveals')
+
+  const cores = await page.evaluate(() => navigator.hardwareConcurrency)
+  const coresRow = page.locator('.bi-row', { hasText: 'navigator.hardwareConcurrency' })
+  await expect(coresRow.locator('.bi-text')).toHaveText(String(cores))
+
+  // The canvas probe works in every engine, and shows what it drew.
+  const canvasRow = page.locator('.bi-row', { hasText: 'canvas.toDataURL()' })
+  await expect(canvasRow.locator('.bi-text')).toHaveText(/^[0-9a-f]{8}$/)
+  await expect(canvasRow.locator('img')).toBeVisible()
+})
