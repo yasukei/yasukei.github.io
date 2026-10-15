@@ -25,7 +25,7 @@ const BACKGROUND_OPTIONS: { value: Background; label: string }[] = [
 ]
 
 /** Errors whose message is written for the person using the tool, rather than for a developer. */
-const EXPLAINED = new Set(['ModelLoadError', 'WebGLUnavailableError'])
+const EXPLAINED = new Set(['ModelLoadError', 'WebGLUnavailableError', 'ViewerLoadError'])
 
 /** Long enough to read a sentence, short enough not to linger over the next action. */
 const MESSAGE_TIME = 4000
@@ -68,15 +68,30 @@ function say(text: string) {
   }, MESSAGE_TIME)
 }
 
+/**
+ * A failed fetch is forgotten, so the next file chosen tries again. It is
+ * nearly always the network, or a deploy that replaced the chunk since the
+ * page was opened -- nothing to do with the file, so it is not blamed on it.
+ */
 function loadModule() {
-  sceneModule ??= import('../lib/model-scene')
+  sceneModule ??= import('../lib/model-scene').catch(() => {
+    sceneModule = null
+    throw Object.assign(new Error('ビューアを読み込めませんでした。ページを再読み込みしてください。'), {
+      name: 'ViewerLoadError'
+    })
+  })
   return sceneModule
 }
 
-/** Made on first use, once the canvas is on screen to size the drawing buffer from. */
-async function sceneFor(el: HTMLCanvasElement): Promise<ModelScene> {
+/**
+ * Made on first use, once the canvas is on screen to size the drawing buffer
+ * from. Null when the page was left while three.js was still on its way: by
+ * then nothing is left to dispose of a WebGL context made now.
+ */
+async function sceneFor(el: HTMLCanvasElement): Promise<ModelScene | null> {
   if (scene) return scene
   const { ModelScene } = await loadModule()
+  if (unmounted) return null
   scene ??= new ModelScene(el)
   scene.setBackground(background.value)
   return scene
@@ -97,7 +112,7 @@ async function load(files: Iterable<File>) {
     const el = canvas.value
     if (!el || unmounted) return
     const viewer = await sceneFor(el)
-    if (current !== loadCount || unmounted) return
+    if (!viewer || current !== loadCount || unmounted) return
     const shown = await viewer.load(picked.model, picked.format, picked.resources)
     if (!shown || current !== loadCount) return
 
@@ -105,8 +120,14 @@ async function load(files: Iterable<File>) {
     // A guess from the format, which the toggle can overrule for this model.
     zUp.value = picked.format === 'stl'
     viewer.setZUp(zUp.value)
-    // The model itself loaded; what is missing is a texture it can be shown without.
-    if (shown.missing.length > 0) say(`${shown.missing.join('、')} が見つからないため、なしで表示しています。`)
+    // The model itself loaded; what is missing is a texture or .mtl it can be shown without.
+    const notes = [
+      shown.missing.length > 0 ? `${shown.missing.join('、')} が見つからないため、なしで表示しています。` : '',
+      shown.ambiguous.length > 0
+        ? `${shown.ambiguous.join('、')} は別々のフォルダにある同じ名前のファイルとして参照されていて、区別できません。`
+        : ''
+    ].join('')
+    if (notes) say(notes)
     else message.value = ''
   } catch (error) {
     if (current !== loadCount) return
@@ -172,10 +193,9 @@ async function save() {
 }
 
 onMounted(() => {
-  // Start fetching three.js now, so it is usually there by the time a file is chosen.
-  void loadModule().catch(() => {
-    sceneModule = null
-  })
+  // Start fetching three.js now, so it is usually there by the time a file is
+  // chosen. A failure is told when one is, which also tries again.
+  void loadModule().catch(() => {})
 })
 
 onBeforeUnmount(() => {
@@ -249,7 +269,7 @@ onBeforeUnmount(() => {
 
     <p class="mv-hint">
       左ドラッグで回転、右ドラッグ（または Shift + ドラッグ）で移動、ホイールで拡大縮小。スマホは 1 本指で回転、2 本指で移動と拡大縮小。
-      .gltf と .obj は、参照している .bin・テクスチャ・.mtl も一緒に選ぶかドロップしてください。
+      .gltf と .obj は、参照している .bin・テクスチャ・.mtl も一緒に選ぶかドロップしてください（ファイル名で照合するので、別々のフォルダにある同じ名前のファイルは区別できません）。
       サイズの単位はファイル次第です（glTF はメートル、STL はたいてい mm）。
       モデルはこのブラウザの中だけで処理され、どこにも送信されません。
     </p>

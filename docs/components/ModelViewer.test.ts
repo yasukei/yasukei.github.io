@@ -12,7 +12,21 @@ import type { Shown } from '../lib/model-scene'
  * records what it was asked to do and answers when the test says so.
  */
 
-const scenes = vi.hoisted(() => [] as FakeScene[])
+const { scenes, fakeScene } = vi.hoisted(() => {
+  const scenes: FakeScene[] = []
+  /** Stands in for ModelScene; called with `new`, so it is a function rather than an arrow. */
+  const fakeScene = vi.fn(function (this: FakeScene) {
+    this.load = vi.fn(async () => SHOWN)
+    this.setWireframe = vi.fn()
+    this.setZUp = vi.fn()
+    this.setBackground = vi.fn()
+    this.resetView = vi.fn()
+    this.snapshot = vi.fn(async () => new Blob([new Uint8Array(10)], { type: 'image/png' }))
+    this.dispose = vi.fn()
+    scenes.push(this)
+  })
+  return { scenes, fakeScene }
+})
 
 interface FakeScene {
   load: ReturnType<typeof vi.fn>
@@ -24,23 +38,13 @@ interface FakeScene {
   dispose: ReturnType<typeof vi.fn>
 }
 
-vi.mock('../lib/model-scene', () => ({
-  ModelScene: vi.fn(function (this: FakeScene) {
-    this.load = vi.fn(async () => SHOWN)
-    this.setWireframe = vi.fn()
-    this.setZUp = vi.fn()
-    this.setBackground = vi.fn()
-    this.resetView = vi.fn()
-    this.snapshot = vi.fn(async () => new Blob([new Uint8Array(10)], { type: 'image/png' }))
-    this.dispose = vi.fn()
-    scenes.push(this)
-  })
-}))
+vi.mock('../lib/model-scene', () => ({ ModelScene: fakeScene }))
 
 const SHOWN: Shown = {
   stats: { meshes: 3, triangles: 12345, vertices: 6789, materials: 2 },
   size: { x: 1.6, y: 1.385, z: 1234.4 },
-  missing: []
+  missing: [],
+  ambiguous: []
 }
 
 let wrapper: VueWrapper | null
@@ -214,6 +218,15 @@ describe('ModelViewer', () => {
     expect(status()).toContain('albedo.png')
   })
 
+  it('warns that files of the same name in different folders were all given one file', async () => {
+    await opened(file('a.stl'))
+    scenes[0].load.mockResolvedValueOnce({ ...SHOWN, ambiguous: ['diffuse.png'] })
+
+    await drop(file('robot.gltf'))
+
+    expect(status()).toContain('diffuse.png は別々のフォルダにある同じ名前のファイル')
+  })
+
   it('passes the view settings on to the scene', async () => {
     await opened(file('robot.glb'))
     const [scene] = scenes
@@ -247,5 +260,59 @@ describe('ModelViewer', () => {
     wrapper = null
 
     expect(scene.dispose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('ModelViewer while three.js is on its way', () => {
+  /**
+   * The component imported afresh, with the scene module coming from
+   * `arrive`: the one mocked above is already there by the time a test runs.
+   */
+  async function viewerWith(arrive: () => Promise<unknown>) {
+    vi.resetModules()
+    vi.doMock('../lib/model-scene', arrive)
+    return (await import('./ModelViewer.vue')).default
+  }
+
+  afterEach(() => {
+    vi.doUnmock('../lib/model-scene')
+    vi.resetModules()
+  })
+
+  it('makes no WebGL context for a page left before it arrived', async () => {
+    let arrived: () => void = () => {}
+    const Viewer = await viewerWith(async () => {
+      await new Promise<void>((resolve) => (arrived = resolve))
+      return { ModelScene: fakeScene }
+    })
+    wrapper = mount(Viewer, { attachTo: document.body })
+    await drop(file('robot.glb'))
+
+    wrapper.unmount()
+    wrapper = null
+    arrived()
+    await flushPromises()
+
+    expect(scenes).toHaveLength(0)
+  })
+
+  it('does not blame the file when three.js could not be fetched, and tries again', async () => {
+    let attempts = 0
+    const Viewer = await viewerWith(async () => {
+      attempts++
+      if (attempts <= 2) throw new TypeError('Failed to fetch dynamically imported module')
+      return { ModelScene: fakeScene }
+    })
+    wrapper = mount(Viewer, { attachTo: document.body })
+    // The attempt made on mount fails quietly; nothing has been asked of it yet.
+    await flushPromises()
+    expect(status()).toBe('')
+
+    await drop(file('robot.glb'))
+    expect(status()).toBe('ビューアを読み込めませんでした。ページを再読み込みしてください。')
+
+    await drop(file('robot.glb'))
+    expect(attempts).toBe(3)
+    expect(wrapper.get('.mv-meta').text()).toContain('robot.glb')
   })
 })

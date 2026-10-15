@@ -26,6 +26,21 @@ export function resourceKey(url: string): string {
   }
 }
 
+/**
+ * The material libraries an OBJ names in its `mtllib` lines, by file name.
+ * A line may list several, but a name may also contain spaces, so the line is
+ * only split when every part of it is an .mtl.
+ */
+export function mtlLibraries(objText: string): string[] {
+  const names: string[] = []
+  for (const match of objText.matchAll(/^[ \t]*mtllib[ \t]+(.+?)[ \t\r]*$/gm)) {
+    const parts = match[1].split(/[ \t]+/)
+    const listed = parts.length > 1 && parts.every((part) => /\.mtl$/i.test(part)) ? parts : [match[1]]
+    for (const name of listed.map(resourceKey)) if (!names.includes(name)) names.push(name)
+  }
+  return names
+}
+
 export interface ModelStats {
   meshes: number
   triangles: number

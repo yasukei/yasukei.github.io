@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest'
-import { BoxGeometry, Mesh, MeshStandardMaterial, Scene } from 'three'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { BoxGeometry, CanvasTexture, Mesh, MeshStandardMaterial, Scene } from 'three'
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
 import { ModelScene, ModelLoadError, WebGLUnavailableError } from './model-scene'
 
@@ -17,6 +17,7 @@ const DARK = [0x1e, 0x1f, 0x24]
 let scene: ModelScene | null = null
 
 afterEach(() => {
+  vi.restoreAllMocks()
   scene?.dispose()
   scene = null
   document.body.innerHTML = ''
@@ -63,6 +64,20 @@ async function gltfWithBin(): Promise<{ gltf: File; bin: File }> {
   json.buffers[0].uri = 'red%20box.bin'
   return { gltf: new File([JSON.stringify(json)], 'red box.gltf'), bin: new File([bytes], 'red box.bin') }
 }
+
+/** A small PNG of one colour, for a model to use as a texture. */
+async function png(name: string, color: string): Promise<File> {
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = 8
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+  ctx.fillStyle = color
+  ctx.fillRect(0, 0, 8, 8)
+  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/png'))
+  return new File([blob], name, { type: 'image/png' })
+}
+
+const QUAD_OBJ = ['v -1 -1 0', 'v 1 -1 0', 'v 1 1 0', 'v -1 1 0', 'vt 0 0', 'vt 1 0', 'vt 1 1', 'vt 0 1']
+const QUAD_FACES = ['f 1/1 2/2 3/3', 'f 1/1 3/3 4/4']
 
 /** The RGBA of a pixel of a saved view, from the top left as a fraction of its size. */
 async function pixelOf(blob: Blob, fx: number, fy: number): Promise<number[]> {
@@ -153,6 +168,75 @@ describe.skipIf(!hasWebGL)('ModelScene', { timeout: 30_000 }, () => {
     const [r, g, b] = await pixelOf(await scene.snapshot(), 0.5, 0.5)
     expect(r).toBeGreaterThan(g + 60)
     expect(r).toBeGreaterThan(b + 60)
+  })
+
+  it('names the .mtl an .obj asked for but was not given, and shows it plain', async () => {
+    scene = new ModelScene(stage())
+    const obj = text('quad.obj', ['mtllib quad.mtl', ...QUAD_OBJ, 'usemtl red', ...QUAD_FACES])
+
+    const shown = await scene.load(obj, 'obj')
+    scene.setZUp(false)
+
+    expect(shown?.missing).toEqual(['quad.mtl'])
+    // The same blue-grey as an STL, not the loader's own white.
+    const [r, , b] = await pixelOf(await scene.snapshot(), 0.5, 0.5)
+    expect(b).toBeGreaterThan(r + 5)
+  })
+
+  it('draws again once the textures an .mtl names have arrived', async () => {
+    scene = new ModelScene(stage())
+    const obj = text('quad.obj', ['mtllib quad.mtl', ...QUAD_OBJ, 'usemtl painted', ...QUAD_FACES])
+    const mtl = text('quad.mtl', ['newmtl painted', 'Kd 1 1 1', 'map_Kd green.png'])
+    // WebGLRenderer's methods are its own, not its prototype's, so a frame is
+    // seen by the draw calls that make it.
+    const draws = [
+      vi.spyOn(WebGL2RenderingContext.prototype, 'drawArrays'),
+      vi.spyOn(WebGL2RenderingContext.prototype, 'drawElements')
+    ]
+
+    // MTLLoader starts the texture and hands the material over before it has arrived.
+    await scene.load(obj, 'obj', [mtl, await png('green.png', '#00ff00')])
+    for (const draw of draws) draw.mockClear()
+
+    await vi.waitFor(() => expect(draws.some((draw) => draw.mock.calls.length > 0)).toBe(true))
+  })
+
+  it('says when two folders have a file of the same name, which a drop cannot tell apart', async () => {
+    scene = new ModelScene(stage())
+    const model = new Scene()
+    for (const [x, color] of [[-1, '#ff0000'], [1, '#0000ff']] as const) {
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 4
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+      ctx.fillStyle = color
+      ctx.fillRect(0, 0, 4, 4)
+      const mesh = new Mesh(new BoxGeometry(), new MeshStandardMaterial({ map: new CanvasTexture(canvas) }))
+      mesh.position.x = x
+      model.add(mesh)
+    }
+    const json = (await new GLTFExporter().parseAsync(model, { binary: false })) as { images: { uri: string }[] }
+    json.images[0].uri = 'body/diffuse.png'
+    json.images[1].uri = 'head/diffuse.png'
+    const gltf = new File([JSON.stringify(json)], 'robot.gltf')
+
+    const shown = await scene.load(gltf, 'gltf', [await png('diffuse.png', '#ff0000')])
+
+    expect(shown?.missing).toEqual([])
+    expect(shown?.ambiguous).toEqual(['diffuse.png'])
+  })
+
+  it('measures a model along its own axes, however the one before was turned', async () => {
+    scene = new ModelScene(stage())
+    await scene.load(boxStl(1, 1, 1), 'stl')
+    scene.setZUp(true)
+    // Three different sides, so that any two swapped would show.
+    const glb = (await new GLTFExporter().parseAsync(new Mesh(new BoxGeometry(2, 3, 1)), { binary: true })) as ArrayBuffer
+
+    const shown = await scene.load(new File([glb], 'tall.glb'), 'glb')
+
+    expect(shown?.size.x).toBeCloseTo(2)
+    expect(shown?.size.y).toBeCloseTo(3)
+    expect(shown?.size.z).toBeCloseTo(1)
   })
 
   it('throws away a load that a newer one overtook', async () => {

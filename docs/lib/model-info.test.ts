@@ -9,7 +9,7 @@ import {
   Mesh,
   MeshBasicMaterial
 } from 'three'
-import { fitDistance, loadErrorMessage, modelStats, resourceKey } from './model-info'
+import { fitDistance, loadErrorMessage, modelStats, mtlLibraries, resourceKey } from './model-info'
 
 describe('resourceKey', () => {
   it('matches a reference by its file name, wherever it says the file is', () => {
@@ -25,6 +25,23 @@ describe('resourceKey', () => {
 
   it('keeps a name that only looks encoded', () => {
     expect(resourceKey('100%.png')).toBe('100%.png')
+  })
+})
+
+describe('mtlLibraries', () => {
+  it('reads the libraries an OBJ names, by file name', () => {
+    expect(mtlLibraries('# made by hand\nmtllib chair.mtl\nv 0 0 0\n')).toEqual(['chair.mtl'])
+    expect(mtlLibraries('mtllib ./materials/chair.mtl\n')).toEqual(['chair.mtl'])
+  })
+
+  it('splits a line that lists several, but keeps a name with spaces whole', () => {
+    expect(mtlLibraries('mtllib a.mtl b.mtl\n')).toEqual(['a.mtl', 'b.mtl'])
+    expect(mtlLibraries('mtllib my chair.mtl\n')).toEqual(['my chair.mtl'])
+  })
+
+  it('copes with Windows line endings, repeats and none at all', () => {
+    expect(mtlLibraries('mtllib chair.mtl\r\nv 0 0 0\r\nmtllib chair.mtl\r\n')).toEqual(['chair.mtl'])
+    expect(mtlLibraries('v 0 0 0\nf 1 1 1\n')).toEqual([])
   })
 })
 

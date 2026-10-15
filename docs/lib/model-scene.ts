@@ -33,7 +33,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
 import { STLLoader } from 'three/addons/loaders/STLLoader.js'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { toBlob } from './canvas-resize'
-import { fitDistance, loadErrorMessage, modelStats, resourceKey, type ModelStats } from './model-info'
+import { fitDistance, loadErrorMessage, modelStats, mtlLibraries, resourceKey, type ModelStats } from './model-info'
 import type { ModelFormat } from './model-viewer'
 
 export type Background = 'dark' | 'light' | 'transparent'
@@ -43,7 +43,7 @@ const BACKGROUNDS: Readonly<Record<Exclude<Background, 'transparent'>, string>> 
   light: '#f2f3f5'
 }
 
-/** STL and OBJ carry no material of their own worth showing; this reads well on both backgrounds. */
+/** For an STL, or an OBJ without its .mtl: neither has a material worth showing. Reads well on both backgrounds. */
 const PLAIN_COLOR = '#99a3b3'
 
 /** Where the camera looks from after a reset: in front, a little above and to the right. */
@@ -72,6 +72,15 @@ export interface Shown {
   size: { x: number; y: number; z: number }
   /** Files the model refers to that were not chosen with it, such as a texture it can do without. */
   missing: string[]
+  /**
+   * File names the model refers to in more than one folder. A drop has no
+   * folders, so every one of them got the same file.
+   */
+  ambiguous: string[]
+}
+
+function plainMaterial(vertexColors: boolean): MeshStandardMaterial {
+  return new MeshStandardMaterial({ color: PLAIN_COLOR, roughness: 0.55, metalness: 0.05, vertexColors })
 }
 
 /** Frees what a model holds on the GPU. Shared materials and textures are freed once each. */
@@ -102,8 +111,11 @@ function materialsOf(root: Object3D): Material[] {
 class FileResolver {
   readonly manager = new LoadingManager()
   readonly missing = new Set<string>()
+  readonly ambiguous = new Set<string>()
   private readonly urls = new Map<string, string>()
   private readonly own = new Set<string>()
+  /** The reference each name was first asked for by, to notice another folder asking for the same name. */
+  private readonly askedAs = new Map<string, string>()
 
   constructor(files: File[]) {
     for (const file of files) {
@@ -114,11 +126,19 @@ class FileResolver {
     this.manager.setURLModifier((url) => {
       if (url.startsWith('data:') || this.own.has(url)) return url
       const key = resourceKey(url)
+      const asked = this.askedAs.get(key)
+      if (asked === undefined) this.askedAs.set(key, url)
+      else if (asked !== url) this.ambiguous.add(key)
       const found = this.urls.get(key)
       if (found) return found
       this.missing.add(key)
       return url
     })
+  }
+
+  /** Calls `then` whenever everything asked for so far has arrived, such as an .mtl's textures. */
+  onSettled(then: () => void) {
+    this.manager.onLoad = then
   }
 
   urlOf(file: File): string {
@@ -146,26 +166,51 @@ async function read(model: File, format: ModelFormat, resolver: FileResolver, re
       // nothing. The winding says the same as a correct normal would, so the
       // normals are always taken from it; each facet stays flat either way.
       geometry.computeVertexNormals()
-      const material = new MeshStandardMaterial({
-        color: PLAIN_COLOR,
-        roughness: 0.55,
-        metalness: 0.05,
-        // Some exporters store per-face colours, which STLLoader exposes this way.
-        vertexColors: Boolean((geometry as { hasColors?: boolean }).hasColors)
-      })
-      return new Mesh(geometry, material)
+      // Some exporters store per-face colours, which STLLoader exposes this way.
+      return new Mesh(geometry, plainMaterial(Boolean((geometry as { hasColors?: boolean }).hasColors)))
     }
-    case 'obj': {
-      const loader = new OBJLoader(resolver.manager)
-      const mtl = resources.find((file) => /\.mtl$/i.test(file.name))
-      if (mtl) {
-        const materials = await new MTLLoader(resolver.manager).loadAsync(resolver.urlOf(mtl))
-        materials.preload()
-        loader.setMaterials(materials)
-      }
-      return loader.loadAsync(url)
-    }
+    case 'obj':
+      return readObj(model, resolver, resources)
   }
+}
+
+/**
+ * OBJLoader leaves the `mtllib` lines alone, so they are read here: the .mtl
+ * they name is found among the chosen files, and one that is not there is
+ * missing, as any other file a model refers to would be. A single .mtl chosen
+ * under another name is still used. Only the first library is applied, which
+ * is all OBJLoader takes.
+ */
+async function readObj(model: File, resolver: FileResolver, resources: File[]): Promise<Object3D> {
+  const text = await model.text()
+  const wanted = mtlLibraries(text)
+  const chosen = resources.filter((file) => /\.mtl$/i.test(file.name))
+  const named = wanted.flatMap((name) => chosen.filter((file) => file.name === name))
+  const mtl = named[0] ?? chosen[0]
+  if (!mtl || named.length > 0) {
+    for (const name of wanted) if (!chosen.some((file) => file.name === name)) resolver.missing.add(name)
+  }
+
+  const loader = new OBJLoader(resolver.manager)
+  if (mtl) {
+    const materials = await new MTLLoader(resolver.manager).loadAsync(resolver.urlOf(mtl))
+    materials.preload()
+    loader.setMaterials(materials)
+  }
+  const object = loader.parse(text)
+  if (mtl) return object
+
+  // Without one, OBJLoader gives every part a white Phong material.
+  const plain = new Map<boolean, MeshStandardMaterial>()
+  object.traverse((child) => {
+    const mesh = child as Mesh
+    if (!mesh.isMesh) return
+    for (const material of [mesh.material].flat()) material.dispose()
+    const colored = mesh.geometry.getAttribute('color') !== undefined
+    if (!plain.has(colored)) plain.set(colored, plainMaterial(colored))
+    mesh.material = plain.get(colored) as MeshStandardMaterial
+  })
+  return object
 }
 
 export class ModelScene {
@@ -238,19 +283,27 @@ export class ModelScene {
       return null
     }
 
+    // Measured before it goes into the holder, which may still be turned for
+    // the model before, and would swap Y and Z for one that is not Z-up.
+    const box = new Box3().setFromObject(object)
+    const size = box.isEmpty() ? new Vector3() : box.getSize(new Vector3())
+
     this.clear()
     this.model = object
     this.resolver = resolver
     this.holder.add(object)
     this.applyWireframe()
+    // The view only redraws when it moves, so textures that arrive later need a frame of their own.
+    resolver.onSettled(() => {
+      if (this.resolver === resolver) this.render()
+    })
 
-    const box = new Box3().setFromObject(object)
-    const size = box.isEmpty() ? new Vector3() : box.getSize(new Vector3())
     this.resetView()
     return {
       stats: modelStats(object),
       size: { x: size.x, y: size.y, z: size.z },
-      missing: [...resolver.missing]
+      missing: [...resolver.missing],
+      ambiguous: [...resolver.ambiguous]
     }
   }
 
