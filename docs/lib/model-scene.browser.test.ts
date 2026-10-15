@@ -85,7 +85,9 @@ describe('ModelScene without WebGL', () => {
   })
 })
 
-describe.skipIf(!hasWebGL)('ModelScene', () => {
+// Chromium on a CI runner draws in software, where compiling the shaders for a
+// first frame has taken over 5 s on its own.
+describe.skipIf(!hasWebGL)('ModelScene', { timeout: 30_000 }, () => {
   it('measures an STL along its own axes', async () => {
     scene = new ModelScene(stage())
 
