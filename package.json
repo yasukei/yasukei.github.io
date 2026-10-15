@@ -34,6 +34,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vitest/browser": "^5.0.3",
     "@vitest/browser-playwright": "^5.0.3",
@@ -47,6 +48,7 @@
     "vue-tsc": "^3.3.12"
   },
   "dependencies": {
-    "marked": "^18.1.0"
+    "marked": "^18.1.0",
+    "three": "^0.186.1"
   }
 }

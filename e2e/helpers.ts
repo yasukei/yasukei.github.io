@@ -43,3 +43,20 @@ export async function pngSizeOf(download: Download): Promise<{ width: number; he
   if (bytes.length < 24 || !bytes.subarray(0, 8).equals(PNG_SIGNATURE)) return null
   return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }
 }
+
+/**
+ * An ASCII STL of a box with one corner at the origin: twelve triangles, so a
+ * viewer's counts and size can be checked without a fixture file.
+ */
+export function boxStl(name: string, x: number, y: number, z: number): ImageFile {
+  const corner = (i: number) => [i & 1 ? x : 0, i & 2 ? y : 0, i & 4 ? z : 0]
+  // Two triangles per face, wound counter-clockwise seen from outside.
+  const faces = [
+    [0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5]
+  ]
+  const facet = (a: number, b: number, c: number) =>
+    ['facet normal 0 0 0', 'outer loop', ...[a, b, c].map((i) => `vertex ${corner(i).join(' ')}`), 'endloop', 'endfacet']
+  const lines = faces.flatMap(([a, b, c, d]) => [...facet(a, b, c), ...facet(a, c, d)])
+  const text = ['solid box', ...lines, 'endsolid box'].join('\n')
+  return { name, mimeType: 'model/stl', buffer: Buffer.from(text) }
+}
