@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   COLORS,
   EMPTY_HISTORY,
+  TOOL_KEYS,
   addShape,
   annotatedName,
   arrowOf,
@@ -93,6 +94,13 @@ describe('isTooSmall', () => {
     expect(isTooSmall(rect(0))).toBe(false)
   })
 
+  it('judges the length on screen, so a wobble on a shrunk image is still a click', () => {
+    // 10 image pixels, on an image shown at a fifth of its size: 2 screen pixels.
+    const wobble: Shape = { type: 'arrow', from: { x: 0, y: 0 }, to: { x: 10, y: 0 }, color: COLORS[0], width: 6 }
+    expect(isTooSmall(wobble, 1)).toBe(false)
+    expect(isTooSmall(wobble, 5)).toBe(true)
+  })
+
   it('keeps a pen dot and any text', () => {
     expect(isTooSmall({ type: 'pen', points: [{ x: 5, y: 5 }], color: COLORS[0], width: 6 })).toBe(false)
     expect(isTooSmall({ type: 'text', at: { x: 0, y: 0 }, size: 32, color: COLORS[0], text: 'a' })).toBe(false)
@@ -181,6 +189,12 @@ describe('shortcutFor', () => {
     expect(shortcutFor(press('Z', { ctrlKey: true, shiftKey: true }))).toEqual({ action: 'redo' })
     expect(shortcutFor(press('y', { ctrlKey: true }))).toEqual({ action: 'redo' })
     expect(shortcutFor(press('c', { metaKey: true }))).toEqual({ action: 'copy' })
+  })
+
+  it('accepts every key the toolbar shows, and gives each to its own tool', () => {
+    for (const [tool, key] of Object.entries(TOOL_KEYS)) {
+      expect(shortcutFor(press(key.toLowerCase()))).toEqual({ action: 'tool', tool })
+    }
   })
 
   it('leaves the browser its own shortcuts', () => {

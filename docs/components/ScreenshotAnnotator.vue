@@ -6,6 +6,7 @@ import {
   LINE_HEIGHT,
   SIZES,
   TEXT_FONT,
+  TOOL_KEYS,
   addShape,
   annotatedName,
   arrowOf,
@@ -43,13 +44,25 @@ interface Editor {
   value: string
 }
 
-const TOOLS: { value: Tool; label: string; key: string; icon: string }[] = [
-  { value: 'ellipse', label: '丸', key: 'O', icon: 'M3 12a9 7 0 1 0 18 0a9 7 0 1 0-18 0' },
-  { value: 'rect', label: '四角', key: 'R', icon: 'M4 6h16v12H4z' },
-  { value: 'arrow', label: '矢印', key: 'A', icon: 'M5 19 19 5M10 5h9v9' },
-  { value: 'pen', label: 'ペン', key: 'P', icon: 'M4 17c3-6 5 2 8-3s4-6 8-4' },
-  { value: 'text', label: '文字', key: 'T', icon: 'M5 6h14M12 6v13' }
-]
+const TOOLS = (
+  [
+    { value: 'ellipse', label: '丸', icon: 'M3 12a9 7 0 1 0 18 0a9 7 0 1 0-18 0' },
+    { value: 'rect', label: '四角', icon: 'M4 6h16v12H4z' },
+    { value: 'arrow', label: '矢印', icon: 'M5 19 19 5M10 5h9v9' },
+    { value: 'pen', label: 'ペン', icon: 'M4 17c3-6 5 2 8-3s4-6 8-4' },
+    { value: 'text', label: '文字', icon: 'M5 6h14M12 6v13' }
+  ] as const
+).map((option) => ({ ...option, key: TOOL_KEYS[option.value] }))
+
+const SHORTCUT_HINT = [
+  ...TOOLS.map((option) => `${option.key} ${option.label}`),
+  `1〜${COLORS.length} 色`,
+  'Ctrl+Z 元に戻す',
+  'Ctrl+C コピー'
+].join(' / ')
+
+/** The editor's border, which pushes its text in from where the canvas draws it. */
+const EDITOR_BORDER = 1
 
 /** Long enough to read a sentence, short enough not to linger over the next action. */
 const MESSAGE_TIME = 3000
@@ -68,6 +81,10 @@ const message = ref('')
 
 /** The shape being dragged out. Not reactive: a pen stroke adds a point per pointer move. */
 let draft: Shape | null = null
+/** The pointer drawing the draft; a second finger touching down is not part of it. */
+let draftPointer: number | null = null
+/** Bumped by every load, so a slow decode that finishes late does not replace a newer image. */
+let loadCount = 0
 let messageTimer: ReturnType<typeof setTimeout> | null = null
 /** The last saved PNG, kept until the next save so the download has time to start. */
 let savedUrl: string | null = null
@@ -79,10 +96,15 @@ const hasShapes = computed(() => history.value.present.length > 0)
 const editorStyle = computed(() => {
   const open = editor.value
   if (!open) return {}
+  const fontSize = open.size * open.scale
+  // The canvas draws the top of the text at `at`, but a textarea puts half the
+  // extra line height and its border above the first line. Moving the editor up
+  // by those keeps the text where it is when Enter turns it into a drawing.
+  const halfLeading = (fontSize * (LINE_HEIGHT - 1)) / 2
   return {
-    left: `${open.at.x * open.scale}px`,
-    top: `${open.at.y * open.scale}px`,
-    fontSize: `${open.size * open.scale}px`,
+    left: `${open.at.x * open.scale - EDITOR_BORDER}px`,
+    top: `${open.at.y * open.scale - halfLeading - EDITOR_BORDER}px`,
+    fontSize: `${fontSize}px`,
     // The same as it will be drawn in, so what is typed lines up with the result.
     fontFamily: TEXT_FONT,
     lineHeight: LINE_HEIGHT,
@@ -182,14 +204,24 @@ function setHistory(next: History) {
 /* ---------- loading ---------- */
 
 async function load(file: Blob, name: string | null) {
-  editor.value = null
+  commitText()
+  // A paste can land while the page has focus for something else entirely, and
+  // a new image starts a new history, so nothing would bring the marks back.
+  if (hasShapes.value && !window.confirm('書き込んだ注釈を破棄して、新しい画像を開きますか？')) return
+
+  const current = ++loadCount
   draft = null
+  draftPointer = null
 
   let bitmap: ImageBitmap
   try {
     bitmap = await decode(file)
   } catch {
-    say('この画像は読み込めませんでした。')
+    if (current === loadCount) say('この画像は読み込めませんでした。')
+    return
+  }
+  if (current !== loadCount) {
+    release(bitmap)
     return
   }
   const size = { width: bitmap.width, height: bitmap.height }
@@ -268,7 +300,7 @@ function pointAt(event: PointerEvent): Point {
 
 function onPointerDown(event: PointerEvent) {
   const loaded = image.value
-  if (event.button !== 0 || !loaded || !canvas.value) return
+  if (!event.isPrimary || event.button !== 0 || !loaded || !canvas.value) return
   const at = pointAt(event)
 
   if (tool.value === 'text') {
@@ -280,6 +312,7 @@ function onPointerDown(event: PointerEvent) {
   }
 
   canvas.value.setPointerCapture?.(event.pointerId)
+  draftPointer = event.pointerId
   const color = COLORS[colorIndex.value]
   const width = SIZES[sizeIndex.value].stroke * scaleUnit(loaded.size)
   draft =
@@ -290,7 +323,7 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function onPointerMove(event: PointerEvent) {
-  if (!draft) return
+  if (!draft || event.pointerId !== draftPointer) return
   const at = pointAt(event)
   if (draft.type === 'pen') draft.points.push(at)
   else if (draft.type !== 'text') {
@@ -300,12 +333,23 @@ function onPointerMove(event: PointerEvent) {
   render()
 }
 
-function endDraft() {
-  if (!draft) return
+function endDraft(event: PointerEvent) {
+  if (!draft || event.pointerId !== draftPointer) return
   const done = draft
   draft = null
-  if (isTooSmall(done)) render()
+  draftPointer = null
+  const el = canvas.value as HTMLCanvasElement
+  const shownWidth = el.getBoundingClientRect().width
+  if (isTooSmall(done, shownWidth ? el.width / shownWidth : 1)) render()
   else setHistory(addShape(history.value, done))
+}
+
+/** The browser took the pointer away mid-drag, e.g. for a scroll: the shape was not finished. */
+function cancelDraft(event: PointerEvent) {
+  if (!draft || event.pointerId !== draftPointer) return
+  draft = null
+  draftPointer = null
+  render()
 }
 
 /* ---------- text ---------- */
@@ -346,7 +390,9 @@ function commitText() {
 }
 
 function onEditorKeydown(event: KeyboardEvent) {
-  if (event.isComposing) return
+  // Safari ends the composition before the Enter that confirms a conversion
+  // arrives, so `isComposing` is already false on it; 229 still marks it as IME.
+  if (event.isComposing || event.keyCode === 229) return
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     commitText()
@@ -531,7 +577,7 @@ onBeforeUnmount(() => {
             @pointerdown="onPointerDown"
             @pointermove="onPointerMove"
             @pointerup="endDraft"
-            @pointercancel="endDraft"
+            @pointercancel="cancelDraft"
           ></canvas>
           <textarea
             v-if="editor"
@@ -558,8 +604,8 @@ onBeforeUnmount(() => {
     <p class="sa-status" role="status">{{ message }}</p>
 
     <p class="sa-hint">
-      文字は Enter で確定、Shift+Enter で改行、Esc で取り消し。ショートカット：O 丸 / R 四角 / A 矢印 / P ペン /
-      T 文字 / 1〜6 色 / Ctrl+Z 元に戻す / Ctrl+C コピー。画像はこのブラウザの中だけで処理され、どこにも送信されません。
+      文字は Enter で確定、Shift+Enter で改行、Esc で取り消し。ショートカット：{{ SHORTCUT_HINT }}。
+      画像はこのブラウザの中だけで処理され、どこにも送信されません。
     </p>
   </div>
 </template>

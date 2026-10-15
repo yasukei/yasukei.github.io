@@ -58,9 +58,21 @@ async function withImage(name = 'shot.png') {
 /** A drag across the canvas, in screen pixels. */
 async function drag(from: [number, number], to: [number, number]) {
   const canvas = wrapper!.get('canvas')
-  await canvas.trigger('pointerdown', { button: 0, pointerId: 1, clientX: from[0], clientY: from[1] })
-  await canvas.trigger('pointermove', { pointerId: 1, clientX: to[0], clientY: to[1] })
-  await canvas.trigger('pointerup', { pointerId: 1, clientX: to[0], clientY: to[1] })
+  await canvas.trigger('pointerdown', { button: 0, pointerId: 1, isPrimary: true, clientX: from[0], clientY: from[1] })
+  await canvas.trigger('pointermove', { pointerId: 1, isPrimary: true, clientX: to[0], clientY: to[1] })
+  await canvas.trigger('pointerup', { pointerId: 1, isPrimary: true, clientX: to[0], clientY: to[1] })
+}
+
+/** Opens the text editor at a point on screen. */
+async function startText(x: number, y: number) {
+  key(document.body, 't')
+  await flushPromises()
+  await wrapper!.get('canvas').trigger('pointerdown', { button: 0, pointerId: 1, isPrimary: true, clientX: x, clientY: y })
+  return wrapper!.get('textarea')
+}
+
+function undoDisabled() {
+  return wrapper!.get('[aria-label="元に戻す"]').attributes('disabled') !== undefined
 }
 
 function key(target: EventTarget, key: string, modifiers: KeyboardEventInit = {}) {
@@ -150,7 +162,7 @@ describe('ScreenshotAnnotator', () => {
 
     // Shown at half size, so every screen pixel is two image pixels.
     expect(drawn('strokeRect').at(-1)).toEqual([200, 100, 400, 200])
-    expect(wrapper!.get('[aria-label="元に戻す"]').attributes('disabled')).toBeUndefined()
+    expect(undoDisabled()).toBe(false)
   })
 
   it('ignores a click that does not drag', async () => {
@@ -158,7 +170,44 @@ describe('ScreenshotAnnotator', () => {
 
     await drag([100, 50], [100, 50])
 
-    expect(wrapper!.get('[aria-label="元に戻す"]').attributes('disabled')).toBeDefined()
+    expect(undoDisabled()).toBe(true)
+  })
+
+  it('judges a stray click in screen pixels, however much the image is shrunk', async () => {
+    await withImage()
+
+    // Two screen pixels of wobble are four image pixels at half size.
+    await drag([100, 50], [102, 50])
+
+    expect(undoDisabled()).toBe(true)
+  })
+
+  it('keeps drawing with the first finger when a second one touches', async () => {
+    await withImage()
+    await wrapper!.get('[title^="四角"]').trigger('click')
+    const canvas = wrapper!.get('canvas')
+
+    await canvas.trigger('pointerdown', { button: 0, pointerId: 1, isPrimary: true, clientX: 10, clientY: 10 })
+    await canvas.trigger('pointerdown', { button: 0, pointerId: 2, isPrimary: false, clientX: 300, clientY: 300 })
+    await canvas.trigger('pointermove', { pointerId: 2, isPrimary: false, clientX: 400, clientY: 400 })
+    await canvas.trigger('pointerup', { pointerId: 2, isPrimary: false, clientX: 400, clientY: 400 })
+    expect(undoDisabled()).toBe(true)
+
+    await canvas.trigger('pointermove', { pointerId: 1, isPrimary: true, clientX: 60, clientY: 60 })
+    await canvas.trigger('pointerup', { pointerId: 1, isPrimary: true, clientX: 60, clientY: 60 })
+
+    expect(drawn('strokeRect').at(-1)).toEqual([20, 20, 100, 100])
+  })
+
+  it('drops a shape the browser cancelled mid-drag', async () => {
+    await withImage()
+    const canvas = wrapper!.get('canvas')
+
+    await canvas.trigger('pointerdown', { button: 0, pointerId: 1, isPrimary: true, clientX: 10, clientY: 10 })
+    await canvas.trigger('pointermove', { pointerId: 1, isPrimary: true, clientX: 200, clientY: 200 })
+    await canvas.trigger('pointercancel', { pointerId: 1, isPrimary: true })
+
+    expect(undoDisabled()).toBe(true)
   })
 
   it('switches tool by key, but not while typing elsewhere on the page', async () => {
@@ -191,11 +240,8 @@ describe('ScreenshotAnnotator', () => {
 
   it('writes text where the canvas was clicked, finished with Enter', async () => {
     await withImage()
-    key(document.body, 't')
-    await flushPromises()
 
-    await wrapper!.get('canvas').trigger('pointerdown', { button: 0, clientX: 40, clientY: 30 })
-    const editor = wrapper!.get('textarea')
+    const editor = await startText(40, 30)
     await editor.setValue('ここを開く')
     await editor.trigger('keydown', { key: 'Enter' })
 
@@ -203,18 +249,94 @@ describe('ScreenshotAnnotator', () => {
     expect(drawn('fillText').at(-1)).toEqual(['ここを開く', 80, 60])
   })
 
+  it('places the editor so its first line sits where the text will be drawn', async () => {
+    await withImage()
+
+    const editor = await startText(40, 30)
+
+    // Up by half the extra line height and the 1px border, which a textarea
+    // puts above its first line and the canvas does not.
+    const fontSize = parseFloat((editor.element as HTMLElement).style.fontSize)
+    expect(parseFloat((editor.element as HTMLElement).style.top)).toBeCloseTo(30 - (fontSize * 0.2) / 2 - 1)
+    expect(parseFloat((editor.element as HTMLElement).style.left)).toBeCloseTo(40 - 1)
+  })
+
+  it('leaves Enter to the IME while it is confirming a conversion', async () => {
+    await withImage()
+    const editor = await startText(40, 30)
+    await editor.setValue('てすと')
+
+    // Safari: the composition has already ended, but the key is still the IME's.
+    await editor.trigger('keydown', { key: 'Enter', keyCode: 229 })
+
+    expect(wrapper!.find('textarea').exists()).toBe(true)
+    expect(drawn('fillText')).toEqual([])
+  })
+
   it('throws the text away on Escape', async () => {
     await withImage()
-    key(document.body, 't')
-    await flushPromises()
 
-    await wrapper!.get('canvas').trigger('pointerdown', { button: 0, clientX: 40, clientY: 30 })
-    const editor = wrapper!.get('textarea')
+    const editor = await startText(40, 30)
     await editor.setValue('やっぱりやめる')
     await editor.trigger('keydown', { key: 'Escape' })
 
     expect(wrapper!.find('textarea').exists()).toBe(false)
     expect(drawn('fillText')).toEqual([])
+  })
+
+  it('asks before a paste throws away the marks drawn so far', async () => {
+    await withImage('first.png')
+    await drag([10, 10], [60, 60])
+    // happy-dom has no dialogs to answer.
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal('confirm', confirm)
+
+    paste(document.body, [image()])
+    await flushPromises()
+
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(wrapper!.get('.sa-meta').text()).toContain('first.png')
+    expect(undoDisabled()).toBe(false)
+
+    confirm.mockReturnValue(true)
+    paste(document.body, [image()])
+    await flushPromises()
+
+    expect(wrapper!.get('.sa-meta').text()).toContain('貼り付けた画像')
+  })
+
+  it('does not ask when there is nothing to lose', async () => {
+    await withImage('first.png')
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
+
+    paste(document.body, [image()])
+    await flushPromises()
+
+    expect(confirm).not.toHaveBeenCalled()
+    expect(wrapper!.get('.sa-meta').text()).toContain('貼り付けた画像')
+  })
+
+  it('keeps the image chosen last when an earlier one finishes decoding after it', async () => {
+    wrapper = mount(ScreenshotAnnotator, { attachTo: document.body })
+    let finishSlow: () => void = () => {}
+    const slow = { ...SOURCE, close: vi.fn() }
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi
+        .fn()
+        .mockImplementationOnce(() => new Promise((resolve) => (finishSlow = () => resolve(slow))))
+        .mockImplementation(async () => ({ ...SOURCE, close: vi.fn() }))
+    )
+
+    await wrapper.get('.sa-root').trigger('drop', { dataTransfer: { files: [image('big-photo.jpg')] } })
+    paste(document.body, [image()])
+    await flushPromises()
+    finishSlow()
+    await flushPromises()
+
+    expect(wrapper.get('.sa-meta').text()).toContain('貼り付けた画像')
+    expect(slow.close).toHaveBeenCalled()
   })
 
   it('saves a PNG named after the source', async () => {

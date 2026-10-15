@@ -59,7 +59,7 @@ export const TEXT_FONT = 'system-ui, "Hiragino Sans", "Noto Sans JP", "Noto Sans
 
 export const LINE_HEIGHT = 1.2
 
-/** A drag shorter than this is a stray click, not a shape. */
+/** A drag shorter than this many screen pixels is a stray click, not a shape. */
 const MIN_DRAG = 3
 
 /**
@@ -135,10 +135,16 @@ export function arrowOf(from: Point, to: Point, width: number): Arrow {
   }
 }
 
-/** A pen stroke is kept even as a single dot; a dragged shape needs some length. */
-export function isTooSmall(shape: Shape): boolean {
+/**
+ * A pen stroke is kept even as a single dot; a dragged shape needs some length.
+ * The length is judged on screen, not in the image: a hand that wobbles by one
+ * screen pixel moves several image pixels on a large screenshot shown small.
+ *
+ * @param imagePerScreen image pixels per screen pixel, as the image is shown
+ */
+export function isTooSmall(shape: Shape, imagePerScreen = 1): boolean {
   if (shape.type !== 'ellipse' && shape.type !== 'rect' && shape.type !== 'arrow') return false
-  return Math.hypot(shape.to.x - shape.from.x, shape.to.y - shape.from.y) < MIN_DRAG
+  return Math.hypot(shape.to.x - shape.from.x, shape.to.y - shape.from.y) < MIN_DRAG * imagePerScreen
 }
 
 /** Where a point on screen falls in the image, which is usually shown smaller than it is. */
@@ -222,7 +228,12 @@ export interface KeyPress {
   altKey: boolean
 }
 
-const TOOL_KEYS: Record<string, Tool> = { o: 'ellipse', r: 'rect', a: 'arrow', p: 'pen', t: 'text' }
+/** The key for each tool, as the toolbar shows it. The only place the keys are defined. */
+export const TOOL_KEYS: Readonly<Record<Tool, string>> = { ellipse: 'O', rect: 'R', arrow: 'A', pen: 'P', text: 'T' }
+
+const TOOL_FOR_KEY = new Map(
+  (Object.entries(TOOL_KEYS) as [Tool, string][]).map(([tool, key]) => [key.toLowerCase(), tool])
+)
 
 /** What a key press asks for, or null when it is not one of the tool's keys. */
 export function shortcutFor(press: KeyPress): Shortcut | null {
@@ -236,7 +247,8 @@ export function shortcutFor(press: KeyPress): Shortcut | null {
   }
   if (press.altKey) return null
 
-  if (key in TOOL_KEYS) return { action: 'tool', tool: TOOL_KEYS[key] }
+  const tool = TOOL_FOR_KEY.get(key)
+  if (tool) return { action: 'tool', tool }
   const digit = Number(key)
   if (/^[1-9]$/.test(key) && digit <= COLORS.length) return { action: 'color', index: digit - 1 }
   return null
