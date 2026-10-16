@@ -30,7 +30,7 @@ export interface ImageDirectory {
 }
 export interface ConversionItem {
   path: string
-  handle: ImageFileHandle
+  handle: Pick<ImageFileHandle, 'getFile'>
   output: string
 }
 
@@ -56,20 +56,45 @@ export async function planConversion(
     throw new Error('dst は src と別のフォルダを選んでください。src のサブフォルダも指定できません。')
   }
   const found: { path: string; handle: ImageFileHandle }[] = []
-  const extension = input === 'jpg' ? /\.jpe?g$/i : new RegExp(`\\.${input}$`, 'i')
   async function walk(directory: ImageDirectory, prefix: string) {
     for await (const entry of directory.values()) {
       const path = prefix + entry.name
       if (entry.kind === 'directory') await walk(entry, path + '/')
-      else if (extension.test(entry.name)) found.push({ path, handle: entry })
+      else found.push({ path, handle: entry })
     }
   }
   await walk(source, '')
-  // Numeric-aware path order, with a codepoint tiebreaker for e.g. 1 and 01.
-  found.sort((a, b) => a.path.localeCompare(b.path, 'en', { numeric: true }) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
-  const items = found.map((item, i) => ({ ...item, output: numberedName(start + i, output) }))
+  const items = makePlan(found, input, output, start)
   for (const item of items) await assertAbsent(destination, item.output)
   return items
+}
+
+/** Folder inputs provide paths without needing directory write permissions. */
+export function planFileConversion(
+  files: readonly File[],
+  input: ImageFormat,
+  output: ImageFormat,
+  start: number
+): ConversionItem[] {
+  return makePlan(files.map(file => ({
+    // webkitRelativePath includes the selected root; direct picking starts below it.
+    path: file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(1).join('/') : file.name,
+    handle: { getFile: async () => file }
+  })), input, output, start)
+}
+
+function makePlan(
+  files: { path: string; handle: Pick<ImageFileHandle, 'getFile'> }[],
+  input: ImageFormat,
+  output: ImageFormat,
+  start: number
+): ConversionItem[] {
+  numberedName(start, output)
+  const extension = input === 'jpg' ? /\.jpe?g$/i : new RegExp(`\\.${input}$`, 'i')
+  const found = files.filter(file => extension.test(file.path))
+  // Numeric-aware path order, with a codepoint tiebreaker for e.g. 1 and 01.
+  found.sort((a, b) => a.path.localeCompare(b.path, 'en', { numeric: true }) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+  return found.map((item, i) => ({ ...item, output: numberedName(start + i, output) }))
 }
 
 async function assertAbsent(destination: ImageDirectory, name: string) {

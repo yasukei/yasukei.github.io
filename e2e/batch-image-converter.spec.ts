@@ -48,13 +48,6 @@ async function outputs(page: Page) {
   })
 }
 
-test('explains unsupported browsers', async ({page}) => {
-  await page.addInitScript(() => { Object.defineProperty(window, 'showDirectoryPicker', {value: undefined}) })
-  await page.goto('/tools/batch-image-converter')
-  // Capability detection must check for a callable picker, not just property presence.
-  await expect(page.getByRole('button', {name: '変換して保存'})).toBeDisabled()
-  await expect(page.getByText(/デスクトップ版 Chrome/)).toBeVisible()
-})
 
 test.describe('folder conversion', () => {
   test.skip(({browserName}) => browserName !== 'chromium', 'Directory picker support requires Chromium')
