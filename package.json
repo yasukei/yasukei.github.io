@@ -48,7 +48,10 @@
     "vue-tsc": "^3.3.12"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "marked": "^18.1.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
     "three": "^0.186.1"
   }
 }
