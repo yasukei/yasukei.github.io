@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createCanvas, decode, release, toBlob } from './canvas-resize'
 import { renderBatchCollage } from './batch-collage-canvas'
 import { imagesToZip } from './batch-image-zip'
 import { planCollages } from './batch-collage'
 import { unzipSync } from 'fflate'
+
+afterEach(() => { vi.restoreAllMocks() })
 
 async function image(name: string, color: string, width = 120, height = 80) {
   const canvas = createCanvas({ width, height })
@@ -24,6 +26,19 @@ async function pixels(blob: Blob) {
 }
 
 describe('batch collage drawing in a real browser', () => {
+  it.each([
+    { dimensions: { width: 200, height: 100 }, passes: 1, expected: { width: 200, height: 100 } },
+    { dimensions: { width: 200 }, passes: 2, expected: { width: 200, height: 66 } },
+    { dimensions: { height: 100 }, passes: 2, expected: { width: 300, height: 100 } },
+    { dimensions: {}, passes: 2, expected: { width: 240, height: 80 } }
+  ])('decodes sources $passes time(s) with dimensions $dimensions', async ({ dimensions, passes, expected }) => {
+    const files = [await image('a.jpg', '#ff0000'), await image('b.jpg', '#00ff00')]
+    const decodeCalls = vi.spyOn(globalThis, 'createImageBitmap')
+    const result = await renderBatchCollage(files, { rows: 1, columns: 2, count: 1, ...dimensions })
+    expect(result.size).toEqual(expected)
+    expect(decodeCalls).toHaveBeenCalledTimes(files.length * passes)
+  })
+
   it('encodes an odd-sized grid in filename order with full-cell stretching', async () => {
     const files = await Promise.all([
       image('d.jpg', '#ffff00'), image('b.jpg', '#00ff00'),
@@ -82,5 +97,37 @@ describe('batch collage drawing in a real browser', () => {
     const options = { rows: 1, columns: 1, count: 1 }
     await expect(renderBatchCollage([new File(['bad jpeg'], 'broken.jpg')], options)).rejects.toThrow('broken.jpg')
     await expect(renderBatchCollage([await image('a.jpg', '#000000')], options, () => true)).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('includes the source filename if explicit-size drawing cannot decode an image', async () => {
+    await expect(renderBatchCollage([new File(['bad jpeg'], 'broken-explicit.jpg')], {
+      rows: 1, columns: 1, count: 1, width: 100, height: 80
+    })).rejects.toThrow('broken-explicit.jpg を読み込めませんでした。')
+  })
+
+  it('includes the source filename if decoding fails after successful measurement', async () => {
+    const file = await image('lost-on-second-pass.jpg', '#000000')
+    const bitmap = await decode(file)
+    const closed = vi.spyOn(bitmap, 'close')
+    vi.spyOn(globalThis, 'createImageBitmap').mockResolvedValueOnce(bitmap)
+      .mockRejectedValue(new DOMException('Unable to decode', 'InvalidStateError'))
+    await expect(renderBatchCollage([file], { rows: 1, columns: 1, count: 1 }))
+      .rejects.toThrow('lost-on-second-pass.jpg を読み込めませんでした。')
+    expect(closed).toHaveBeenCalledOnce()
+  })
+
+  it('preserves cancellation during explicit-size decoding and releases the bitmap', async () => {
+    const file = await image('cancel.jpg', '#000000')
+    const bitmap = await decode(file)
+    const closed = vi.spyOn(bitmap, 'close')
+    let cancelled = false
+    vi.spyOn(globalThis, 'createImageBitmap').mockImplementation(async () => {
+      cancelled = true
+      return bitmap
+    })
+    await expect(renderBatchCollage([file], {
+      rows: 1, columns: 1, count: 1, width: 100, height: 80
+    }, () => cancelled)).rejects.toMatchObject({ name: 'AbortError' })
+    expect(closed).toHaveBeenCalledOnce()
   })
 })

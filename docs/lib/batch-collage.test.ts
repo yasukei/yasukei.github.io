@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collageCell, collageSize, collageSources, planCollages, validateBatchCollage } from './batch-collage'
+import { collageCell, collageSize, collageSources, planCollages, validateBatchCollage, type CollageJob } from './batch-collage'
 import { randomFrom } from './collage-layout'
 
 const options = { rows: 2, columns: 2, count: 2 }
@@ -22,11 +22,13 @@ describe('batch collage selection', () => {
     const selected = first.flatMap(job => job.files)
     expect(selected).toHaveLength(8)
     expect(new Set(selected).size).toBe(8)
-    expect(files).toEqual(original)
+    expect(files).toHaveLength(original.length)
+    files.forEach((file, i) => expect(file).toBe(original[i]))
     expect(first.map(job => job.output)).toEqual(['collage-001.jpg', 'collage-002.jpg'])
     for (const job of first) expect(job.files.map(f => f.name)).toEqual(job.files.map(f => f.name).sort())
-    expect(planCollages(files, options, randomFrom(12))).toEqual(first)
-    expect(planCollages(files, options, randomFrom(13))).not.toEqual(first)
+    const names = (jobs: CollageJob[]) => jobs.map(job => job.files.map(file => file.name))
+    expect(names(planCollages(files, options, randomFrom(12)))).toEqual(names(first))
+    expect(names(planCollages(files, options, randomFrom(13)))).not.toEqual(names(first))
   })
 
   it('uses lexical filename order rather than natural numerical order', () => {
@@ -63,6 +65,14 @@ describe('batch collage geometry', () => {
     expect(collageSize(sizes, { ...grid, width: 100 })).toEqual({ width: 100, height: 40 })
     expect(collageSize(sizes, { ...grid, height: 50 })).toEqual({ width: 124, height: 50 })
     expect(collageSize(sizes, { ...grid, width: 100, height: 100 })).toEqual({ width: 100, height: 100 })
+  })
+
+  it('accepts explicit dimensions without source measurements while retaining size limits', () => {
+    expect(collageSize(null, { ...grid, width: 100, height: 80 })).toEqual({ width: 100, height: 80 })
+    expect(() => collageSize(null, { ...grid, width: 8000, height: 8000 })).toThrow('大きすぎ')
+    expect(() => collageSize(null, { ...grid, width: 1, height: 80 })).toThrow('小さすぎ')
+    expect(() => collageSize(null, grid)).toThrow('画像数')
+    expect(() => collageSize(null, { ...grid, width: 100 })).toThrow('画像数')
   })
 
   it('rejects zero-pixel cells and unsupported output sizes, including automatic dimensions', () => {

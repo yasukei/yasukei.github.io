@@ -1,5 +1,5 @@
 import { CanvasUnavailableError, createCanvas, decode, release, toBlob } from './canvas-resize'
-import { collageCell, collageSize, type BatchCollageOptions } from './batch-collage'
+import { collageCell, collageSize, validateBatchCollage, type BatchCollageOptions } from './batch-collage'
 import type { Size } from './image-resize'
 
 export interface RenderedCollage {
@@ -9,6 +9,14 @@ export interface RenderedCollage {
 
 function checkCancelled(cancelled: () => boolean) {
   if (cancelled()) throw new DOMException('中止しました。', 'AbortError')
+}
+
+async function decodeSource(file: File): Promise<ImageBitmap> {
+  try {
+    return await decode(file)
+  } catch {
+    throw new Error(`${file.name} を読み込めませんでした。`)
+  }
 }
 
 /** Draw the rotated, staggered text directly; avoid a second diagonal-sized canvas. */
@@ -38,21 +46,25 @@ export function drawCollageWatermark(ctx: CanvasRenderingContext2D, size: Size, 
 export async function renderBatchCollage(
   files: File[], options: BatchCollageOptions, cancelled = () => false
 ): Promise<RenderedCollage> {
-  // Measure and release each source before drawing. Only one full-resolution
-  // source is decoded at a time, including when the output size is automatic.
+  checkCancelled(cancelled)
+  validateBatchCollage(options)
+  if (files.length !== options.rows * options.columns) throw new Error('行数 × 列数と画像数が一致しません。')
+  // Automatic sizing needs a measurement pass. With both dimensions specified,
+  // decode each source only once. Both paths hold just one source at a time.
+  const measureSources = options.width === undefined || options.height === undefined
   const sources: Size[] = []
-  for (const file of files) {
-    checkCancelled(cancelled)
-    let bitmap: ImageBitmap | null = null
-    try {
-      bitmap = await decode(file)
-      sources.push({ width: bitmap.width, height: bitmap.height })
-    } catch {
-      throw new Error(`${file.name} を読み込めませんでした。`)
-    } finally { release(bitmap) }
+  if (measureSources) {
+    for (const file of files) {
+      checkCancelled(cancelled)
+      let bitmap: ImageBitmap | null = null
+      try {
+        bitmap = await decodeSource(file)
+        sources.push({ width: bitmap.width, height: bitmap.height })
+      } finally { release(bitmap) }
+    }
   }
   checkCancelled(cancelled)
-  const size = collageSize(sources, options)
+  const size = collageSize(measureSources ? sources : null, options)
   const canvas = createCanvas(size)
   try {
     const ctx = canvas.getContext('2d')
@@ -63,7 +75,7 @@ export async function renderBatchCollage(
       checkCancelled(cancelled)
       let bitmap: ImageBitmap | null = null
       try {
-        bitmap = await decode(files[i])
+        bitmap = await decodeSource(files[i])
         checkCancelled(cancelled)
         const cell = collageCell(size, options.rows, options.columns, i)
         ctx.drawImage(bitmap, cell.x, cell.y, cell.width, cell.height)

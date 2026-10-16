@@ -66,13 +66,18 @@ export function planCollages(
   })
 }
 
-export function collageSize(sources: readonly Size[], options: BatchCollageOptions): Size {
+/** Source measurements are needed only when at least one output dimension is automatic. */
+export function collageSize(sources: readonly Size[] | null, options: BatchCollageOptions): Size {
   validateBatchCollage(options)
-  if (sources.length !== options.rows * options.columns) throw new Error('行数 × 列数と画像数が一致しません。')
-  const defaultWidth = Math.floor(sources.reduce((sum, size) => sum + size.width, 0) / sources.length) * options.columns
-  const defaultHeight = Math.floor(sources.reduce((sum, size) => sum + size.height, 0) / sources.length) * options.rows
-  const width = options.width ?? (options.height === undefined ? defaultWidth : Math.floor(defaultWidth * options.height / defaultHeight))
-  const height = options.height ?? (options.width === undefined ? defaultHeight : Math.floor(defaultHeight * options.width / defaultWidth))
+  let width = options.width
+  let height = options.height
+  if (width === undefined || height === undefined) {
+    if (!sources || sources.length !== options.rows * options.columns) throw new Error('行数 × 列数と画像数が一致しません。')
+    const defaultWidth = Math.floor(sources.reduce((sum, size) => sum + size.width, 0) / sources.length) * options.columns
+    const defaultHeight = Math.floor(sources.reduce((sum, size) => sum + size.height, 0) / sources.length) * options.rows
+    width = options.width ?? (options.height === undefined ? defaultWidth : Math.floor(defaultWidth * options.height / defaultHeight))
+    height = options.height ?? (options.width === undefined ? defaultHeight : Math.floor(defaultHeight * options.width / defaultWidth))
+  }
   const size = { width, height }
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < options.columns || height < options.rows) {
     throw new Error('出力サイズが小さすぎます。各セルが 1 px 以上になる幅・高さを指定してください。')
