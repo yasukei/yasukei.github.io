@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { EncryptedPDFError, PDFDocument } from 'pdf-lib'
-import { exportPdf, MAX_PDF_BYTES, MAX_PDF_PAGES, parsePageSelection, splitPdf, type PdfPageRef } from '../lib/pdf-editor'
+import type { PDFDocument } from 'pdf-lib'
+import { MAX_PDF_BYTES, MAX_PDF_PAGES, parsePageSelection, type PdfPageRef } from '../lib/pdf-selection'
 import type { openPdfPreview } from '../lib/pdf-preview'
 
 interface Page extends PdfPageRef {
@@ -38,7 +38,11 @@ async function addFiles(files: File[]) {
   busy.value = true
   errors.value = []
   notice.value = ''
+  progress.value = 'PDF編集機能を準備中…'
   try {
+    const { loadPdfLibrary, loadPdfPreview } = await import('../lib/pdf-runtime')
+    const { PDFDocument, EncryptedPDFError } = await loadPdfLibrary()
+    if (!alive) return
     for (const file of files) {
       if (!alive) break
       if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
@@ -62,7 +66,7 @@ async function addFiles(files: File[]) {
         // pdf-lib's ES5 Error subclass loses its prototype in some builds.
         const encrypted = error instanceof EncryptedPDFError ||
           (error instanceof Error && error.message === new EncryptedPDFError().message)
-        if (alive) errors.value.push(`${file.name}: ${encrypted ? 'パスワード付きPDFには対応していません。保護を解除したPDFを選択してください。' : 'PDFを読み込めませんでした。破損していないPDFを選択してください。'}`)
+        if (alive) errors.value.push(`${file.name}: ${encrypted ? '保護（暗号化）されたPDFには対応していません。開くためのパスワードや編集制限を解除したPDFを選択してください。' : 'PDFを読み込めませんでした。破損していないPDFを選択してください。'}`)
         continue
       }
       if (!alive) break
@@ -78,9 +82,9 @@ async function addFiles(files: File[]) {
         id: nextId++, sourceId, pageIndex, filename: file.name, selected: true, thumbnail: null
       }))
       pages.value.push(...added)
-      let failedPreview = false
+      let previewCount = 0
       try {
-        const { openPdfPreview } = await import('../lib/pdf-preview')
+        const { openPdfPreview } = await loadPdfPreview()
         if (!alive) break
         preview = openPdfPreview(bytes)
         for (const page of added) {
@@ -90,19 +94,19 @@ async function addFiles(files: File[]) {
             const image = await preview.thumbnail(page.pageIndex)
             // Assign through the reactive array, rather than the original object.
             const target = pages.value.find(item => item.id === page.id)
-            if (alive && target) target.thumbnail = image
-          } catch {
-            failedPreview = true
-          }
+            if (alive && target) { target.thumbnail = image; previewCount++ }
+          } catch { /* Report unavailable thumbnails after this file. */ }
         }
-      } catch {
-        failedPreview = true
-      } finally {
+      } catch { /* The preview module or document could not be opened. */ } finally {
         await preview?.destroy().catch(() => {})
         preview = null
       }
-      if (alive && failedPreview) errors.value.push(`${file.name}: 一部のプレビューを表示できませんでした。ページ番号で選択・保存できます。`)
+      if (alive && previewCount < count) {
+        errors.value.push(`${file.name}: ${previewCount === 0 ? 'プレビューを表示できませんでした。' : '一部のプレビューを表示できませんでした。'}ページ番号で選択・保存できます。`)
+      }
     }
+  } catch {
+    if (alive) errors.value.push('PDF編集機能を読み込めませんでした。ページを再読み込みしてお試しください。')
   } finally {
     if (alive) {
       busy.value = false
@@ -188,6 +192,9 @@ async function save(split: boolean) {
   errors.value = []
   progress.value = split ? 'ページを分割中…' : 'PDFを作成中…'
   try {
+    const { loadPdfExport } = await import('../lib/pdf-runtime')
+    const { exportPdf, splitPdf } = await loadPdfExport()
+    if (!alive) return
     const data = await (split ? splitPdf : exportPdf)(selected.value, sources)
     if (!alive) return
     const url = URL.createObjectURL(new Blob([new Uint8Array(data).buffer], { type: split ? 'application/zip' : 'application/pdf' }))
@@ -230,7 +237,7 @@ onBeforeUnmount(() => {
       <span>ここにPDFをドロップすることもできます（合計100MB・300ページまで）。</span>
     </div>
     <p class="pdf-help">複数のPDFは追加した順に並びます。カードをドラッグするか「前へ」「次へ」で移動してください。保存対象はチェックしたページです。</p>
-    <p class="pdf-help">ページ内容をコピーします。しおり・電子署名・フォームの保持には対応していません。パスワード付きPDFは事前に保護を解除してください。</p>
+    <p class="pdf-help">保存時はページ本文をコピーし、リンク・注釈を除去します。しおり・電子署名・フォームの保持にも対応していません。保護（暗号化）されたPDFは、開くためのパスワードや編集制限を事前に解除してください。</p>
     <p v-if="busy" role="status">{{ progress }}</p>
     <div v-if="errors.length" role="alert" class="pdf-errors"><p v-for="(error, index) in errors" :key="index">{{ error }}</p></div>
     <p class="pdf-notice" role="status" aria-live="polite">{{ notice }}</p>

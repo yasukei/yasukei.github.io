@@ -1,29 +1,27 @@
-import { PDFDocument, type PDFPage } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFObjectCopier, PDFPage, PDFPageLeaf } from 'pdf-lib'
 import { zipSync } from 'fflate'
+import type { PdfPageRef } from './pdf-selection'
 
-export const MAX_PDF_BYTES = 100 * 1024 * 1024
-export const MAX_PDF_PAGES = 300
+// Copy page content, geometry and transparency only. Annotation/action graphs
+// can reference other pages (Dest, GoTo, P, Parent/Kids) and pull their complete
+// contents into an extraction, even though viewers don't display those pages.
+const PAGE_CONTENT_KEYS = new Set([
+  'Type', 'Contents', 'Resources', 'MediaBox', 'CropBox', 'BleedBox', 'TrimBox',
+  'ArtBox', 'Rotate', 'UserUnit', 'Group'
+])
 
-export interface PdfPageRef {
-  sourceId: number
-  pageIndex: number
-}
-
-/** The numbers refer to the current visible order, starting at one. */
-export function parsePageSelection(value: string, count: number): Set<number> {
-  const selected = new Set<number>()
-  if (!value.trim()) throw new Error('ページ番号を入力してください。例: 1-3, 5')
-  for (const part of value.split(',')) {
-    const match = part.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/)
-    if (!match) throw new Error('ページ指定は「1-3, 5」の形式で入力してください。')
-    const first = Number(match[1])
-    const last = Number(match[2] ?? match[1])
-    if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first || last > count) {
-      throw new Error(`ページ番号は1〜${count}の範囲で指定してください。`)
-    }
-    for (let number = first; number <= last; number++) selected.add(number - 1)
+function contentOnlyPage(page: PDFPage): PDFPageLeaf {
+  // Clone before filtering so that exporting never changes the source PDF.
+  const leaf = page.node.clone()
+  for (const key of PDFPageLeaf.InheritableEntries) {
+    const name = PDFName.of(key)
+    const inherited = leaf.getInheritableAttribute(name)
+    if (inherited) leaf.set(name, inherited)
   }
-  return selected
+  for (const key of leaf.keys()) {
+    if (!PAGE_CONTENT_KEYS.has(key.decodeText())) leaf.delete(key)
+  }
+  return leaf
 }
 
 /** Copy page objects without rasterizing: text and vector content stay intact. */
@@ -43,10 +41,16 @@ export async function exportPdf(pages: readonly PdfPageRef[], sources: ReadonlyM
     if (!source || group.indexes.some(index => !Number.isInteger(index) || index < 0 || index >= source.getPageCount())) {
       throw new Error('元のPDFページが見つかりません。PDFを追加し直してください。')
     }
-    // A single copy per source shares fonts/images across its pages. Copying
-    // separately duplicates those resources and can multiply the output size.
-    const copied = await result.copyPages(source, group.indexes)
-    copied.forEach((page, index) => { ordered[group.positions[index]] = page })
+    await source.flush()
+    // One copier per source still shares fonts/images across selected pages.
+    // Filter BEFORE copying: deleting annotations afterwards leaves objects in
+    // the destination context, and pdf-lib serializes those hidden pages too.
+    const copier = PDFObjectCopier.for(source.context, result.context)
+    for (const [index, pageIndex] of group.indexes.entries()) {
+      const leaf = copier.copy(contentOnlyPage(source.getPage(pageIndex)))
+      const ref = result.context.register(leaf)
+      ordered[group.positions[index]] = PDFPage.of(leaf, ref, result)
+    }
   }
   ordered.forEach(page => result.addPage(page))
   return result.save()

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { PDFDocument, PDFName, PDFNumber } from 'pdf-lib'
 import PdfEditor from './PdfEditor.vue'
-import { MAX_PDF_BYTES, MAX_PDF_PAGES } from '../lib/pdf-editor'
+import { MAX_PDF_BYTES, MAX_PDF_PAGES } from '../lib/pdf-selection'
 
 const preview = vi.hoisted(() => ({
   thumbnail: vi.fn<() => Promise<string>>(), destroy: vi.fn<() => Promise<void>>()
@@ -84,7 +84,7 @@ describe('PDF editor', () => {
     const bytes = await encrypted.save()
     const wrapper = editor()
     await add(wrapper, [new File([new Uint8Array(bytes).buffer], 'protected.pdf')])
-    expect(wrapper.get('[role="alert"]').text()).toContain('パスワード付きPDF')
+    expect(wrapper.get('[role="alert"]').text()).toContain('保護（暗号化）されたPDF')
     expect(preview.thumbnail).not.toHaveBeenCalled()
     expect(wrapper.findAll('.pdf-page')).toHaveLength(0)
   })
@@ -110,7 +110,8 @@ describe('PDF editor', () => {
     preview.thumbnail.mockRejectedValue(new Error('cannot render'))
     const wrapper = editor()
     await add(wrapper, [await file()])
-    expect(wrapper.get('[role="alert"]').text()).toContain('プレビュー')
+    expect(wrapper.get('[role="alert"]').text()).toContain('プレビューを表示できませんでした。')
+    expect(wrapper.get('[role="alert"]').text()).not.toContain('一部')
     expect(preview.destroy).toHaveBeenCalled()
     await wrapper.get('.pdf-primary').trigger('click')
     await vi.waitFor(() => expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled())
@@ -118,6 +119,14 @@ describe('PDF editor', () => {
     wrapper.unmount()
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-test')
     wrappers.splice(wrappers.indexOf(wrapper), 1)
+  })
+
+  it('distinguishes partial preview failures from total failures', async () => {
+    preview.thumbnail.mockRejectedValueOnce(new Error('one page failed'))
+    const wrapper = editor()
+    await add(wrapper, [await file()])
+    expect(wrapper.findAll('.pdf-thumbnail img')).toHaveLength(1)
+    expect(wrapper.get('[role="alert"]').text()).toContain('一部のプレビュー')
   })
 
   it('disables export when no pages are selected and clears all source state', async () => {
