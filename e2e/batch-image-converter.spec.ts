@@ -15,6 +15,11 @@ async function chooseFolders(page: Page, collision = false, input: 'png' | 'jpg'
       const f = await directory.getFileHandle(name, {create: true})
       const w = await f.createWritable(); await w.write(png); await w.close()
     }
+    const hidden = await src.getDirectoryHandle('.hidden', {create: true})
+    for (const [directory, name] of [[src, `._2.${input}`], [hidden, `1.${input}`]] as const) {
+      const f = await directory.getFileHandle(name, {create: true})
+      const w = await f.createWritable(); await w.write('AppleDouble or hidden image'); await w.close()
+    }
     const ignored = await src.getFileHandle('ignore.txt', {create: true})
     const w = await ignored.createWritable(); await w.write('not an image'); await w.close()
     if (collision) {
@@ -62,6 +67,36 @@ test.describe('folder conversion', () => {
     for (const f of result) {
       expect(f.type).toBe('image/jpeg'); expect(f.size).toEqual([4,3]); expect(f.pixel).toEqual([255,255,255,255])
     }
+  })
+  test('reports completion when cancelled during the final save without double dimming buttons', async ({page}) => {
+    await page.goto('/tools/batch-image-converter')
+    await chooseFolders(page)
+    await page.evaluate(() => {
+      const controls = window as unknown as { finalWritePending: boolean; releaseFinalWrite: () => void }
+      const create = FileSystemFileHandle.prototype.createWritable
+      FileSystemFileHandle.prototype.createWritable = async function(options) {
+        const writable = await create.call(this, options)
+        if (this.name === '003.jpg') {
+          const close = writable.close.bind(writable)
+          writable.close = async () => {
+            controls.finalWritePending = true
+            await new Promise<void>(resolve => { controls.releaseFinalWrite = resolve })
+            await close()
+          }
+        }
+        return writable
+      }
+    })
+    await page.getByRole('button', {name:'変換して保存'}).click()
+    await page.waitForFunction(() => (window as unknown as {finalWritePending: boolean}).finalWritePending)
+    await expect(page.locator('fieldset')).toHaveCSS('opacity', '0.6')
+    await expect(page.getByRole('button', {name:'src フォルダを選択'})).toBeDisabled()
+    await expect(page.getByRole('button', {name:'src フォルダを選択'})).toHaveCSS('opacity', '1')
+    await page.getByRole('button', {name:'中止', exact:true}).click()
+    await page.evaluate(() => (window as unknown as {releaseFinalWrite: () => void}).releaseFinalWrite())
+    await expect(page.getByText('変換・保存が完了しました。')).toBeVisible()
+    await expect(page.getByText('保存済み 3 / 3 枚')).toBeVisible()
+    expect((await outputs(page)).map(f => f.name)).toEqual(['001.jpg','002.jpg','003.jpg'])
   })
   test('allows a custom start and output format', async ({page}) => {
     await page.goto('/tools/batch-image-converter')

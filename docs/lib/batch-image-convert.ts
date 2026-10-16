@@ -58,6 +58,7 @@ export async function planConversion(
   const found: { path: string; handle: ImageFileHandle }[] = []
   async function walk(directory: ImageDirectory, prefix: string) {
     for await (const entry of directory.values()) {
+      if (isHiddenPath(entry.name)) continue
       const path = prefix + entry.name
       if (entry.kind === 'directory') await walk(entry, path + '/')
       else found.push({ path, handle: entry })
@@ -83,6 +84,11 @@ export function planFileConversion(
   })), input, output, start)
 }
 
+// AppleDouble sidecars and images under dot-directories are not source images.
+function isHiddenPath(path: string): boolean {
+  return path.split('/').some(part => part.startsWith('.'))
+}
+
 function makePlan(
   files: { path: string; handle: Pick<ImageFileHandle, 'getFile'> }[],
   input: ImageFormat,
@@ -91,7 +97,7 @@ function makePlan(
 ): ConversionItem[] {
   numberedName(start, output)
   const extension = input === 'jpg' ? /\.jpe?g$/i : new RegExp(`\\.${input}$`, 'i')
-  const found = files.filter(file => extension.test(file.path))
+  const found = files.filter(file => extension.test(file.path) && !isHiddenPath(file.path))
   // Numeric-aware path order, with a codepoint tiebreaker for e.g. 1 and 01.
   found.sort((a, b) => a.path.localeCompare(b.path, 'en', { numeric: true }) || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
   return found.map((item, i) => ({ ...item, output: numberedName(start + i, output) }))

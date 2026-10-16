@@ -77,7 +77,7 @@ async function runFolder() {
       cancelled: () => cancelled.value,
       saved: item => { saved.value++; status.value = `${item.path} → ${item.output}` }
     })
-    status.value = cancelled.value ? '中止しました。保存済みのファイルは残ります。' : '変換・保存が完了しました。'
+    status.value = saved.value === total.value ? '変換・保存が完了しました。' : '中止しました。保存済みのファイルは残ります。'
   })
 }
 async function runZip() {
@@ -145,7 +145,7 @@ async function run() {
     </fieldset>
     <p v-if="mode === 'folder'" class="hint">既存ファイルは上書きしません。dst は src の外に指定してください。変換中は他のアプリから保存先を変更しないでください。</p>
     <p v-else class="hint">ZIP 内には連番の画像を直下にまとめます。メモリ使用量を抑えるため、ZIP は 256 MiB・65,535 枚までです。大きいフォルダは分けて変換してください。</p>
-    <p class="hint">相対パスを数字の順も考慮して並べ、連番を付けます（例: 2.png → 10.png）。JPEG の透明部分は白色になります。画像サイズはそのままで、EXIF などのメタデータは削除されます。</p>
+    <p class="hint">隠しファイル・隠しフォルダは除外します。相対パスを数字の順も考慮して並べ、連番を付けます（例: 2.png → 10.png）。JPEG の透明部分は白色になります。画像サイズはそのままで、EXIF などのメタデータは削除されます。</p>
     <div class="actions">
       <button type="button" :disabled="!canRun" @click="run">{{ mode === 'folder' ? '変換して保存' : '変換して ZIP を作成' }}</button>
       <button v-if="busy" type="button" :disabled="cancelled" @click="cancelled = true">中止</button>
@@ -167,7 +167,7 @@ button, select, input[type='text'] { border: 1px solid var(--vp-c-border); borde
 input[type='text'] { width: 160px; }
 button { cursor: pointer; }
 button:hover:enabled { border-color: var(--vp-c-brand-1); }
-button:disabled, fieldset:disabled { opacity: 0.6; }
+.actions button:disabled, fieldset:disabled { opacity: 0.6; }
 .error { color: var(--vp-c-danger-1); }
 .hint { font-size: 13px; color: var(--vp-c-text-2); }
 </style>

@@ -19,6 +19,14 @@ describe('folder file planning', () => {
     ])
     expect(await plan[0].handle.getFile()).toBe(files[1])
   })
+  it('excludes dotfiles and paths under hidden directories without gaps', () => {
+    const hidden = [source('._1.png', 'src/._1.png'), source('.cover.png'),
+      source('1.png', 'src/.hidden/1.png'), source('2.png', 'src/visible/.cache/2.png')]
+    const plan = planFileConversion([...hidden, ...files], 'png', 'jpg', 1)
+    expect(plan.map(item => [item.path, item.output])).toEqual([
+      ['2.png', '001.jpg'], ['10.PNG', '002.jpg'], ['nested/1.png', '003.jpg']
+    ])
+  })
   it('accepts loose image files and JPEG extension aliases', () => {
     expect(planFileConversion([source('a.JPEG'), source('b.jpg'), source('c.png')], 'jpg', 'webp', 0).map(item => item.output)).toEqual(['000.webp', '001.webp'])
   })
@@ -70,12 +78,38 @@ describe('ZIP conversion', () => {
     await expect(convertToZip(items, 'jpg', 0.9, options, encode)).rejects.toThrow('256 MiB')
     expect(arrayBuffer).not.toHaveBeenCalled()
   })
-  it('checks ZIP metadata overhead too, and refuses too many entries', async () => {
+  it('enforces the combined byte limit before allocating the next image', async () => {
     const {encode, options} = setup()
     const blob = new Blob(['image'])
     Object.defineProperty(blob, 'size', {value: MAX_ZIP_BYTES})
     encode.mockResolvedValueOnce(new Blob(['first'])).mockResolvedValue(blob)
     await expect(convertToZip(items, 'jpg', 0.9, options, encode)).rejects.toThrow('256 MiB')
+  })
+  it('rejects local-header overhead even when the image payload fits', async () => {
+    const {encode, converted, options} = setup()
+    const blob = new Blob(['image'])
+    const read = vi.spyOn(blob, 'arrayBuffer')
+    encode.mockResolvedValue(blob)
+    // Five payload bytes fit, but the local header alone exceeds this ceiling.
+    await expect(convertToZip(items.slice(0, 1), 'jpg', 0.9, {...options, maxBytes: 32}, encode)).rejects.toThrow('容量の上限')
+    expect(read).toHaveBeenCalledOnce()
+    expect(converted).not.toHaveBeenCalled()
+  })
+  it('includes the central directory in the limit and accepts an exact fit', async () => {
+    const {encode, converted, options} = setup()
+    const single = items.slice(0, 1)
+    const baseline = await convertToZip(single, 'jpg', 0.9, options, encode)
+    converted.mockClear()
+    // The entry is already emitted; only the final ZIP directory exceeds the limit.
+    await expect(convertToZip(single, 'jpg', 0.9, {...options, maxBytes: baseline!.size - 1}, encode)).rejects.toThrow('容量の上限')
+    expect(converted).toHaveBeenCalledOnce()
+    const exact = await convertToZip(single, 'jpg', 0.9, {...options, maxBytes: baseline!.size}, encode)
+    expect(exact!.size).toBe(baseline!.size)
+    expect(Object.keys(unzipSync(new Uint8Array(await exact!.arrayBuffer())))).toEqual(['001.jpg'])
+  })
+  it('refuses too many entries before encoding', async () => {
+    const {encode, options} = setup()
     await expect(convertToZip(Array(65_536).fill(items[0]), 'jpg', 0.9, options, encode)).rejects.toThrow('65,535')
+    expect(encode).not.toHaveBeenCalled()
   })
 })

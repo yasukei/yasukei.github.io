@@ -31,6 +31,19 @@ describe('batch planning', () => {
       ['2.png', '998.jpg'], ['10.PNG', '999.jpg'], ['nested/a.png', '1000.jpg']
     ])
   })
+  it('skips dotfiles and hidden directories before numbering or traversal', async () => {
+    const hidden = dir('.hidden', [file('1.png')])
+    const iterate = vi.spyOn(hidden, 'values').mockImplementation(async function* () {
+      throw new Error('hidden directory must not be read')
+    })
+    const src = dir('src', [file('._IMG_0001.png'), file('.cover.png'), hidden,
+      dir('visible', [file('._2.png'), file('2.png')]), file('1.png')])
+    const result = await planConversion(src, dir('dst'), 'png', 'jpg', 1)
+    expect(result.map(item => [item.path, item.output])).toEqual([
+      ['1.png', '001.jpg'], ['visible/2.png', '002.jpg']
+    ])
+    expect(iterate).not.toHaveBeenCalled()
+  })
   it('treats jpg and jpeg as the same input format', async () => {
     expect(await planConversion(dir('src', [file('a.JPEG'), file('b.jpg'), file('c.png')]), dir('dst'), 'jpg', 'webp', 0)).toHaveLength(2)
   })

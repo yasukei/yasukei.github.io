@@ -15,6 +15,12 @@ async function withFolder(page: Page, action: (folder: string) => Promise<void>)
       await writeFile(path.join(folder, name), png.buffer)
     }
     await writeFile(path.join(folder, 'ignored.txt'), 'not an image')
+    await writeFile(path.join(folder, '._2.PNG'), 'AppleDouble sidecar')
+    await writeFile(path.join(folder, '.cover.png'), (await pngOf(page, '.cover.png', 1, 1)).buffer)
+    await mkdir(path.join(folder, '.hidden'))
+    await writeFile(path.join(folder, '.hidden', '1.png'), 'not an image')
+    await mkdir(path.join(folder, 'nested', '.cache'))
+    await writeFile(path.join(folder, 'nested', '.cache', '1.png'), 'not an image')
     await action(folder)
   } finally { await rm(temporary, {recursive: true, force: true}) }
 }
