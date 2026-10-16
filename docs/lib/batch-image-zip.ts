@@ -18,6 +18,19 @@ export async function convertToZip(
   },
   encode = encodeImage
 ): Promise<Blob | null> {
+  return imagesToZip(items, options, async item => encode(await item.handle.getFile(), format, quality))
+}
+
+/** Sequentially encode image jobs; share the bounded ZIP writer between image tools. */
+export async function imagesToZip<T extends { path: string; output: string }>(
+  items: T[],
+  options: {
+    cancelled: () => boolean
+    converted: (item: T) => void
+    maxBytes?: number
+  },
+  encode: (item: T) => Promise<Blob>
+): Promise<Blob | null> {
   if (items.length > MAX_ZIP_FILES) throw new Error('ZIP にまとめる画像は 65,535 枚以内に分けてください。')
   const maxBytes = Math.min(options.maxBytes ?? MAX_ZIP_BYTES, MAX_ZIP_BYTES)
   const parts: Blob[] = []
@@ -35,7 +48,7 @@ export async function convertToZip(
     for (const item of items) {
       if (options.cancelled()) return null
       try {
-        const blob = await encode(await item.handle.getFile(), format, quality)
+        const blob = await encode(item)
         if (options.cancelled()) return null
         // Check before allocating an ArrayBuffer for a potentially large image.
         if (bytes + blob.size > maxBytes) throw new Error('ZIP が容量の上限を超えます（最大 256 MiB）。画像を少なくして再実行してください。')
