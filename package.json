@@ -33,9 +33,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.5",
     "@types/three": "^0.186.0",
-    "@vitejs/plugin-vue": "^6.0.9",
+    "@vitejs/plugin-vue": "^6.0.10",
     "@vitest/browser": "^5.0.3",
     "@vitest/browser-playwright": "^5.0.3",
     "@vue/test-utils": "^2.5.1",
@@ -44,12 +44,12 @@
     "typescript": "^5.9.3",
     "vitepress": "^1.0.0",
     "vitest": "^5.0.3",
-    "vue": "^3.5.43",
-    "vue-tsc": "^3.3.12"
+    "vue": "^3.5.44",
+    "vue-tsc": "^3.3.13"
   },
   "dependencies": {
     "fflate": "^0.8.3",
-    "marked": "^18.1.0",
+    "marked": "^18.1.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.4.299",
     "three": "^0.186.1"
