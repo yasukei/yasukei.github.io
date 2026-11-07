@@ -15,7 +15,10 @@ export default defineConfig({
   testDir: 'e2e',
   forbidOnly: !!process.env.CI,
   use: {
-    baseURL: `http://localhost:${PORT}`
+    baseURL: `http://localhost:${PORT}`,
+    // Kept only for a test that fails, so CI can upload what happened in it.
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure'
   },
   projects: [
     {
