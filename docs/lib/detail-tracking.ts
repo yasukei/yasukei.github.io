@@ -9,7 +9,7 @@ export interface DetailEstimator {
   close(): void
 }
 
-/** Use pose wrists when available: handedness classifiers may assume a selfie image. */
+/** Match detections one-to-one when both pose wrists are visible. Otherwise keep MediaPipe's handedness labels. */
 export function associateHands(hands: HandFrame[], pose?: PosePoint[]): HandFrame[] {
   const left = pose?.[15], right = pose?.[16]
   if (!left || !right || (left.visibility ?? 0) < .5 || (right.visibility ?? 0) < .5) return hands
