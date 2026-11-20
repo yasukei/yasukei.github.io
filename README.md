@@ -81,3 +81,39 @@ component thin and the logic reachable from a test.
 Browser and E2E need the browsers from `npx playwright install --with-deps`.
 Add `--browser=chromium` to `test:browser`, or `--project=chromium` to `test:e2e`,
 to run one engine only.
+
+## Pose capture
+
+`/tools/pose-capture` crops a shared screen/tab/window and overlays one person's
+33 pose landmarks using MediaPipe Pose Landmarker (Lite / Full / Heavy, default Lite).
+Changing the selected model restarts active inference while retaining the screen
+share and loaded VRM. Each model is downloaded on first use. Start screen sharing,
+then click 「追跡を開始」 to load the model. Choose a local `.vrm` (0.x or 1.0)
+to synchronize its head, torso and limbs with the same world landmarks. No model is bundled.
+Retargeting uses bone directions and time-based quaternion smoothing, holds low-confidence
+joints, and does not drive root translation. Face Landmarker (478 points and blendshapes)
+and Hand Landmarker (up to two hands, 21 points each) have independent checkboxes,
+can run with or without Pose, and share the same clean cropped input. Face drives
+head orientation, left/right blinks, mouth shapes and smile via supported VRM
+presets; Hand drives supported finger bones. Wrist rotation needs the index,
+middle, and little finger base bones to establish the model's palm orientation.
+Pose wrist positions help associate detected hands with anatomical sides when Pose
+is enabled. Use a single person and ensure face/hands are large enough in the crop.
+Missing/OFF face clears tracked expressions; undetected joints hold their last pose. Each tracker has its
+own status/FPS, GPU-to-CPU initialization fallback and retry. OFF releases its model.
+External
+model resources are blocked; use a self-contained VRM. Orbit/zoom and pose/view resets
+are available. Files stay local; use models according to their individual terms.
+Inference runs locally; captured images are never uploaded. WASM matching the
+installed `@mediapipe/tasks-vision` version is loaded from jsDelivr and the model
+from Google Cloud Storage. GPU initialization falls back to CPU. Inference input is limited
+to a longest edge of 640 px while the displayed crop keeps its source resolution.
+
+This tool uses [MediaPipe](https://github.com/google-ai-edge/mediapipe)
+under the [Apache License 2.0](docs/public/licenses/mediapipe-LICENSE.txt).
+The license is also published at `/licenses/mediapipe-LICENSE.txt` and linked in
+the tool's footer. JS is installed via npm; WASM and model files are not committed.
+
+VRM loading uses [three-vrm](https://github.com/pixiv/three-vrm)
+([MIT License](docs/public/licenses/three-vrm-LICENSE.txt)) and
+[three.js](https://threejs.org/) ([MIT License](docs/public/licenses/three-LICENSE.txt)).
