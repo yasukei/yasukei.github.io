@@ -1,6 +1,47 @@
 import { readFile } from 'node:fs/promises'
 import type { Download, Page } from '@playwright/test'
 
+export async function mockDisplayMedia(page: Page, mode: 'stream' | 'cancel' = 'stream'): Promise<void> {
+  const recordedFrame = mode === 'stream' && page.context().browser()?.browserType().name() === 'webkit'
+    ? `data:video/webm;base64,${(await readFile(new URL('../test/fixtures/pose-source.webm', import.meta.url))).toString('base64')}`
+    : undefined
+  await page.addInitScript(({ mode, recordedFrame }) => {
+    // Headless WebKit does not reliably play canvas streams. Use the same red
+    // frame as a video fixture while keeping the track for the stop assertions.
+    if (recordedFrame) {
+      const srcObject = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject')!
+      Object.defineProperty(HTMLVideoElement.prototype, 'srcObject', {
+        get: srcObject.get,
+        set(this: HTMLVideoElement, stream: MediaProvider | null) {
+          if (this.getAttribute('aria-label') !== '共有映像') {
+            srcObject.set!.call(this, stream)
+          } else if (stream) {
+            this.src = recordedFrame
+            this.loop = true
+          } else {
+            this.removeAttribute('src')
+            this.load()
+          }
+        }
+      })
+    }
+    // WebKit can recreate the navigator.mediaDevices wrapper between calls.
+    Object.defineProperty(MediaDevices.prototype, 'getDisplayMedia', { value: async () => {
+      if (mode === 'cancel') throw new DOMException('Cancelled', 'NotAllowedError')
+      const source = document.createElement('canvas')
+      source.width = 640
+      source.height = 360
+      const context = source.getContext('2d')!
+      context.fillStyle = '#ff0000'
+      context.fillRect(0, 0, 640, 360)
+      const stream = source.captureStream(30)
+      const state = window as typeof window & { captureTrack?: MediaStreamTrack }
+      state.captureTrack = stream.getVideoTracks()[0]
+      return stream
+    } })
+  }, { mode, recordedFrame })
+}
+
 export interface ImageFile {
   name: string
   mimeType: string

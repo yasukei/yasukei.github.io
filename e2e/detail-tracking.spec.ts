@@ -1,18 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { vrmFixture } from '../test/vrm-fixture'
+import { mockDisplayMedia } from './helpers'
 
 const FIRST_FRAME = 30_000
 
 test('tracks pose, face and hands together and toggles each without ending the share', async ({ page }) => {
   test.slow()
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', { value: async () => {
-      const source = document.createElement('canvas')
-      source.width = 640; source.height = 360
-      source.getContext('2d')!.fillRect(0, 0, 640, 360)
-      return source.captureStream(30)
-    } })
-  })
+  await mockDisplayMedia(page)
   const pose = Array.from({ length: 33 }, () => ({ x: 0, y: 0, z: 0, visibility: 0 }))
   for (const [i, x, y] of [[11, .2, -.5], [12, -.2, -.5], [23, .1, 0], [24, -.1, 0]]) pose[i] = { x, y, z: 0, visibility: 1 }
   const face = Array.from({ length: 478 }, () => ({ x: 0, y: 0, z: 0, visibility: 1 }))

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { vrmFixture } from '../test/vrm-fixture'
+import { mockDisplayMedia } from './helpers'
 
 // Software WebGL can take several seconds to render the first frame in CI.
 const FIRST_FRAME = 30_000
@@ -7,14 +8,7 @@ const FIRST_FRAME = 30_000
 for (const version of ['1', '0'] as const) {
   test(`loads a local VRM ${version}, synchronizes it, and keeps it after invalid input`, async ({ page }) => {
     test.slow()
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', { value: async () => {
-        const source = document.createElement('canvas')
-        source.width = 640; source.height = 360
-        source.getContext('2d')!.fillRect(0, 0, 640, 360)
-        return source.captureStream(30)
-      } })
-    })
+    await mockDisplayMedia(page)
     // Use known observations, including an older timestamp from a slow initial inference.
     const points = Array.from({ length: 33 }, () => ({ x: 0, y: 0, z: 0, visibility: 0 }))
     for (const [index, x, y, z] of [
