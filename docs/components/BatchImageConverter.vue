@@ -7,6 +7,7 @@ import {
 import { convertToZip } from '../lib/batch-image-zip'
 
 type DirectoryPicker = (options: { id: string; mode: 'read' | 'readwrite' }) => Promise<ImageDirectory>
+const ready = ref(false)
 const supported = ref(false)
 const folderInputSupported = ref(true)
 const mode = ref<'folder' | 'zip'>('zip')
@@ -34,6 +35,7 @@ onMounted(() => {
   supported.value = window.isSecureContext && !!navigator.locks && typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
   folderInputSupported.value = 'webkitdirectory' in document.createElement('input')
   mode.value = supported.value ? 'folder' : 'zip'
+  ready.value = true
 })
 onBeforeUnmount(() => { cancelled.value = true; clearZip() })
 watch([mode, input, output, start, quality, files], resetResults)
@@ -116,7 +118,7 @@ async function run() {
   <div class="batch-converter">
     <p>src 配下の画像をサブフォルダも含めて変換し、001.jpg、002.jpg のような連番で保存します。画像はアップロードされず、このブラウザ内で処理されます。</p>
     <p v-if="!supported" role="status">このブラウザでは、フォルダを読み込んで ZIP でダウンロードできます。ZIP を展開して、保存したいフォルダへ移動してください。</p>
-    <fieldset :disabled="busy">
+    <fieldset :disabled="!ready || busy">
       <legend>変換設定</legend>
       <label>保存方法
         <select v-model="mode">

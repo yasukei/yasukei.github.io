@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { heightFor, parseRatio, widthFor } from '../lib/aspect-ratio'
 import {
   acceptFiles,
@@ -68,6 +68,7 @@ const REDRAW_DELAY = 250
 
 const items = ref<Item[]>([])
 const rejected = ref<Rejection[]>([])
+const ready = ref(false)
 const dragging = ref(false)
 const busy = ref(false)
 const failure = ref<string | null>(null)
@@ -345,6 +346,7 @@ function save() {
   link.click()
 }
 
+onMounted(() => { ready.value = true })
 onBeforeUnmount(() => {
   if (redrawTimer) clearTimeout(redrawTimer)
   discardResult()
@@ -352,7 +354,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="cm-root">
+  <fieldset class="cm-root" :disabled="!ready">
     <label
       class="cm-drop"
       :class="{ 'cm-drop-over': dragging }"
@@ -520,7 +522,7 @@ onBeforeUnmount(() => {
       cover はセルに収まらない部分を切り取り、contain は周りに背景を残します。メイン画像には、ほかの画像と
       違う収め方を指定できます。各画像は一度に縮小せず、段階的にセルの大きさまで縮小されます。
     </p>
-  </div>
+  </fieldset>
 </template>
 
 <style scoped>
@@ -528,7 +530,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 16px;
+  min-inline-size: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
 }
 
 .cm-drop {

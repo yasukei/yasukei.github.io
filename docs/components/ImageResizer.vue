@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   MAX_FILES,
   OUTPUT_FORMATS,
@@ -42,6 +42,7 @@ const MODES: { value: ResizeMode; label: string; unit: string }[] = [
 /** Long enough that typing a four digit number is one run, not four. */
 const RERUN_DELAY = 250
 
+const ready = ref(false)
 const items = ref<Item[]>([])
 const rejected = ref<Rejection[]>([])
 const dragging = ref(false)
@@ -225,6 +226,7 @@ function saveAll() {
   })
 }
 
+onMounted(() => { ready.value = true })
 onBeforeUnmount(() => {
   if (rerunTimer) clearTimeout(rerunTimer)
   clearAll()
@@ -232,7 +234,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="ir-root">
+  <fieldset class="ir-root" :disabled="!ready">
     <label
       class="ir-drop"
       :class="{ 'ir-drop-over': dragging }"
@@ -401,7 +403,7 @@ onBeforeUnmount(() => {
       一度に縮めず半分ずつ段階的に縮小するので、細部が崩れにくくなります。なお、再エンコードによって
       EXIF 情報（カメラの設定や写真に含まれる位置情報など）は削除されます。
     </p>
-  </div>
+  </fieldset>
 </template>
 
 <style scoped>
@@ -409,7 +411,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 16px;
+  min-inline-size: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
 }
 
 .ir-drop {

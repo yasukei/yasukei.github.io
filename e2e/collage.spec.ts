@@ -1,10 +1,19 @@
 import { test, expect } from '@playwright/test'
-import { pngOf, pngSizeOf } from './helpers'
+import { expectControlsToWaitForHydration, pngOf, pngSizeOf } from './helpers'
+
+test('keeps collage controls disabled until the page hydrates', async ({ page }) => {
+  const fileInput = page.getByLabel('画像を選択')
+  await expectControlsToWaitForHydration(page, 'collage', fileInput, page.getByLabel('長辺', { exact: true }))
+  await fileInput.setInputFiles(await pngOf(page, 'collage.png', 80, 60))
+  await expect(page.getByAltText('コラージュ')).toBeVisible()
+})
 
 test('lays out chosen images and downloads the collage', async ({ page }) => {
   await page.goto('/tools/collage')
 
-  await page.getByLabel('画像を選択').setInputFiles([
+  const fileInput = page.getByLabel('画像を選択')
+  await expect(fileInput).toBeEnabled()
+  await fileInput.setInputFiles([
     await pngOf(page, 'a.png', 800, 600),
     await pngOf(page, 'b.png', 600, 800),
     await pngOf(page, 'c.png', 500, 500)

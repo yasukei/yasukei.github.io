@@ -70,6 +70,7 @@ const MESSAGE_TIME = 3000
 const canvas = ref<HTMLCanvasElement | null>(null)
 const textarea = ref<HTMLTextAreaElement | null>(null)
 
+const ready = ref(false)
 const image = shallowRef<Loaded | null>(null)
 const history = shallowRef<History>(EMPTY_HISTORY)
 const tool = ref<Tool>('ellipse')
@@ -478,6 +479,7 @@ function onKeydown(event: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('paste', onPaste)
   document.addEventListener('keydown', onKeydown)
+  ready.value = true
 })
 
 onBeforeUnmount(() => {
@@ -499,7 +501,7 @@ onBeforeUnmount(() => {
     @drop.prevent="onDrop"
   >
     <label v-if="!image" class="sa-drop">
-      <input class="sa-file" type="file" accept="image/*" aria-label="画像を選択" @change="onPick" />
+      <input class="sa-file" type="file" accept="image/*" :disabled="!ready" aria-label="画像を選択" @change="onPick" />
       <strong><kbd>Ctrl</kbd> + <kbd>V</kbd> でスクショを貼り付け</strong>
       <span class="sa-drop-note">または画像をドロップ／クリックして選択</span>
     </label>

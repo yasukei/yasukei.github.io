@@ -9,6 +9,7 @@ import { imagesToZip } from '../lib/batch-image-zip'
 import { formatBytes, type Size } from '../lib/image-resize'
 
 const files = shallowRef<File[]>([])
+const ready = ref(false)
 const folderSupported = ref(false)
 const rows = ref('2')
 const columns = ref('2')
@@ -43,7 +44,10 @@ const validation = computed(() => {
   }
 })
 
-onMounted(() => { folderSupported.value = 'webkitdirectory' in document.createElement('input') })
+onMounted(() => {
+  folderSupported.value = 'webkitdirectory' in document.createElement('input')
+  ready.value = true
+})
 onBeforeUnmount(() => { cancelled.value = true; discardResults() })
 watch([files, options], () => {
   discardResults()
@@ -104,7 +108,7 @@ async function run() {
 <template>
   <div class="batch-collage">
     <p>JPG / JPEG からランダムに画像を選び、指定した行数 × 列数のコラージュを一括生成します。画像はアップロードされず、このブラウザ内で処理されます。</p>
-    <fieldset :disabled="busy">
+    <fieldset :disabled="!ready || busy">
       <legend>画像と生成設定</legend>
       <div class="sources">
         <label>画像をまとめて選択
