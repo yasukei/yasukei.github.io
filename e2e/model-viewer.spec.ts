@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { boxStl, pngSizeOf } from './helpers'
+import { boxStl, expectControlsToWaitForHydration, pngSizeOf } from './helpers'
 
 /**
  * How long the first model may take to appear. CI runners have no GPU, so
@@ -14,10 +14,18 @@ function hasWebGL(page: Page): Promise<boolean> {
   return page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))
 }
 
+test('keeps model selection disabled until the page hydrates', async ({ page }) => {
+  const chooser = page.getByLabel('モデルを選択')
+  await expectControlsToWaitForHydration(page, 'model-viewer', chooser)
+  await chooser.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') })
+  await expect(page.getByRole('status')).toHaveText('対応している形式は GLB / glTF / STL / OBJ です。')
+})
+
 test('shows a chosen model and saves the view as a PNG', async ({ page }) => {
   test.slow()
   await page.goto('/tools/model-viewer')
   const chooser = page.getByLabel('モデルを選択')
+  await expect(chooser).toBeEnabled()
 
   if (!(await hasWebGL(page))) {
     await chooser.setInputFiles(boxStl('bracket.stl', 40, 20, 10))
@@ -44,7 +52,9 @@ test('shows a chosen model and saves the view as a PNG', async ({ page }) => {
 test('says which formats it takes when given something else', async ({ page }) => {
   await page.goto('/tools/model-viewer')
 
-  await page.getByLabel('モデルを選択').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') })
+  const chooser = page.getByLabel('モデルを選択')
+  await expect(chooser).toBeEnabled()
+  await chooser.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') })
 
   await expect(page.getByRole('status')).toHaveText('対応している形式は GLB / glTF / STL / OBJ です。')
 })
@@ -59,7 +69,9 @@ test('loads three.js on its own, without a second copy of the page', async ({ pa
   page.on('request', (request) => requested.push(new URL(request.url()).pathname))
 
   await page.goto('/tools/model-viewer')
-  await page.getByLabel('モデルを選択').setInputFiles(boxStl('box.stl', 1, 1, 1))
+  const chooser = page.getByLabel('モデルを選択')
+  await expect(chooser).toBeEnabled()
+  await chooser.setInputFiles(boxStl('box.stl', 1, 1, 1))
   await expect(page.locator('.mv-meta, [role="status"]:not(:empty)').first()).toBeVisible({ timeout: FIRST_FRAME })
 
   expect(requested.some((path) => /\/model-scene\.[\w-]+\.js$/.test(path))).toBe(true)

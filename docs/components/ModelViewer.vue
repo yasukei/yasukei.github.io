@@ -32,6 +32,7 @@ const MESSAGE_TIME = 4000
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 
+const ready = ref(false)
 const model = shallowRef<Loaded | null>(null)
 const loading = ref(false)
 const dragging = ref(false)
@@ -193,6 +194,7 @@ async function save() {
 }
 
 onMounted(() => {
+  ready.value = true
   // Start fetching three.js now, so it is usually there by the time a file is
   // chosen. A failure is told when one is, which also tries again.
   void loadModule().catch(() => {})
@@ -217,7 +219,7 @@ onBeforeUnmount(() => {
     @drop.prevent="onDrop"
   >
     <label v-if="!model && !loading" class="mv-drop">
-      <input class="mv-file" type="file" :accept="ACCEPT" multiple aria-label="モデルを選択" @change="onPick" />
+      <input class="mv-file" type="file" :accept="ACCEPT" :disabled="!ready" multiple aria-label="モデルを選択" @change="onPick" />
       <strong>3D モデルをドロップ</strong>
       <span class="mv-drop-note">または クリックして選択（GLB / glTF / STL / OBJ）</span>
     </label>

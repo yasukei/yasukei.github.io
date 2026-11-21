@@ -1,5 +1,24 @@
 import { readFile } from 'node:fs/promises'
-import type { Download, Page } from '@playwright/test'
+import { expect, type Download, type Locator, type Page } from '@playwright/test'
+
+export async function expectControlsToWaitForHydration(page: Page, tool: string, ...controls: Locator[]) {
+  const chunkRequested = Promise.withResolvers<void>()
+  const releaseChunk = Promise.withResolvers<void>()
+  await page.route(`**/tools_${tool}.md.*.js`, async route => {
+    chunkRequested.resolve()
+    await releaseChunk.promise
+    await route.continue()
+  })
+
+  try {
+    await page.goto(`/tools/${tool}`, { waitUntil: 'commit' })
+    await chunkRequested.promise
+    for (const control of controls) await expect(control).toBeDisabled()
+  } finally {
+    releaseChunk.resolve()
+  }
+  for (const control of controls) await expect(control).toBeEnabled()
+}
 
 export async function mockDisplayMedia(page: Page, mode: 'stream' | 'cancel' = 'stream'): Promise<void> {
   const recordedFrame = mode === 'stream' && page.context().browser()?.browserType().name() === 'webkit'

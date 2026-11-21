@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { unzipSync } from 'fflate'
+import { expectControlsToWaitForHydration } from './helpers'
 
 async function jpeg(page: Page, name: string) {
   const data = await page.evaluate(() => {
@@ -15,13 +16,22 @@ async function jpeg(page: Page, name: string) {
   return { name, mimeType: 'image/jpeg', buffer: Buffer.from(data, 'base64') }
 }
 
+test('keeps batch collage controls disabled until the page hydrates', async ({ page }) => {
+  const fileInput = page.getByLabel('画像をまとめて選択')
+  await expectControlsToWaitForHydration(page, 'batch-collage', fileInput, page.getByLabel('行数', { exact: true }))
+  await fileInput.setInputFiles(await jpeg(page, 'collage.jpg'))
+  await expect(page.getByText('対象画像: 1 枚', { exact: true })).toBeVisible()
+})
+
 test('generates disjoint sorted collages on a separate Tools page and downloads a JPEG ZIP', async ({ page }) => {
   await page.goto('/tools/')
   await page.getByRole('main').getByRole('link', { name: '一括コラージュメーカー', exact: true }).click()
   await expect(page).toHaveURL(/\/tools\/batch-collage(?:\.html)?$/)
   await expect(page.getByRole('link', { name: 'コラージュメーカー', exact: true }).last()).toBeVisible()
   await expect(page.getByRole('button', { name: '生成して ZIP を作成' })).toBeDisabled()
-  await page.getByLabel('画像をまとめて選択').setInputFiles(await Promise.all(
+  const fileInput = page.getByLabel('画像をまとめて選択')
+  await expect(fileInput).toBeEnabled()
+  await fileInput.setInputFiles(await Promise.all(
     ['8.jpg', '7.jpg', '6.jpg', '5.jpg', '4.jpg', '3.jpg', '2.jpg', '1.jpg'].map(name => jpeg(page, name))
   ))
   await page.getByLabel('生成枚数', { exact: true }).fill('2')
@@ -62,13 +72,15 @@ test('generates disjoint sorted collages on a separate Tools page and downloads 
 
 test('reports corrupt JPEGs and allows retry with new inputs', async ({ page }) => {
   await page.goto('/tools/batch-collage')
+  const fileInput = page.getByLabel('画像をまとめて選択')
+  await expect(fileInput).toBeEnabled()
   await page.getByLabel('行数', { exact: true }).fill('1')
   await page.getByLabel('列数', { exact: true }).fill('1')
-  await page.getByLabel('画像をまとめて選択').setInputFiles({ name: 'broken.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('broken') })
+  await fileInput.setInputFiles({ name: 'broken.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('broken') })
   await page.getByRole('button', { name: '生成して ZIP を作成' }).click()
   await expect(page.getByRole('alert').filter({ hasText: 'broken.jpg' })).toBeVisible()
   await expect(page.getByRole('link', { name: /ZIP をダウンロード/ })).toHaveCount(0)
-  await page.getByLabel('画像をまとめて選択').setInputFiles(await jpeg(page, 'valid.jpg'))
+  await fileInput.setInputFiles(await jpeg(page, 'valid.jpg'))
   await page.getByRole('button', { name: '生成して ZIP を作成' }).click()
   await expect(page.getByRole('link', { name: /ZIP をダウンロード/ })).toBeVisible()
 })

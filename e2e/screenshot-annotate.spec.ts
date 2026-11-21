@@ -1,10 +1,19 @@
 import { test, expect } from '@playwright/test'
-import { pngOf, pngSizeOf } from './helpers'
+import { expectControlsToWaitForHydration, pngOf, pngSizeOf } from './helpers'
+
+test('keeps screenshot selection disabled until the page hydrates', async ({ page }) => {
+  const fileInput = page.getByLabel('画像を選択')
+  await expectControlsToWaitForHydration(page, 'screenshot-annotate', fileInput)
+  await fileInput.setInputFiles(await pngOf(page, 'shot.png', 120, 80))
+  await expect(page.getByText('120 × 80 px')).toBeVisible()
+})
 
 test('marks up a chosen image and saves it at its own size', async ({ page }) => {
   await page.goto('/tools/screenshot-annotate')
 
-  await page.getByLabel('画像を選択').setInputFiles(await pngOf(page, 'shot.png', 1200, 700))
+  const fileInput = page.getByLabel('画像を選択')
+  await expect(fileInput).toBeEnabled()
+  await fileInput.setInputFiles(await pngOf(page, 'shot.png', 1200, 700))
   await expect(page.getByText('1200 × 700 px')).toBeVisible()
 
   const undo = page.getByRole('button', { name: '元に戻す' })

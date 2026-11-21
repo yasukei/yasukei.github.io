@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { unzipSync } from 'fflate'
-import { pngOf } from './helpers'
+import { expectControlsToWaitForHydration, pngOf } from './helpers'
 
 async function withFolder(page: Page, action: (folder: string) => Promise<void>) {
   const temporary = await mkdtemp(path.join(tmpdir(), 'batch-images-'))
@@ -33,6 +33,11 @@ async function downloadZip(page: Page) {
   return unzipSync(new Uint8Array(await readFile(await download.path())))
 }
 
+async function openZipConverter(page: Page, inputLabel = 'src フォルダを読み込む') {
+  await page.goto('/tools/batch-image-converter')
+  await expect(page.getByLabel(inputLabel)).toBeEnabled()
+}
+
 test.beforeEach(async ({page}) => {
   // Force the fallback on Chromium too. Neither directory write permissions nor
   // Web Locks may be prerequisites for choosing a folder and downloading a ZIP.
@@ -40,10 +45,19 @@ test.beforeEach(async ({page}) => {
     Object.defineProperty(window, 'showDirectoryPicker', {value: undefined})
     Object.defineProperty(navigator, 'locks', {value: undefined})
   })
-  await page.goto('/tools/batch-image-converter')
+})
+
+test('keeps folder selection disabled until the page hydrates', async ({page}) => {
+  const folderInput = page.getByLabel('src フォルダを読み込む')
+  await expectControlsToWaitForHydration(page, 'batch-image-converter', folderInput)
+  await withFolder(page, async folder => {
+    await folderInput.setInputFiles(folder)
+    await expect(page.getByRole('button', {name: '変換して ZIP を作成'})).toBeEnabled()
+  })
 })
 
 test('automatically offers ZIP when direct folder writes are unavailable', async ({page}) => {
+  await openZipConverter(page)
   await expect(page.getByLabel('保存方法')).toHaveValue('zip')
   await expect(page.getByLabel('src フォルダを読み込む')).toBeVisible()
   await expect(page.getByText('このブラウザでは、フォルダを読み込んで ZIP でダウンロードできます。', {exact: false})).toBeVisible()
@@ -51,6 +65,7 @@ test('automatically offers ZIP when direct folder writes are unavailable', async
 })
 
 test('downloads numbered JPEGs from a recursive folder in natural path order', async ({page}) => {
+  await openZipConverter(page)
   await withFolder(page, async folder => {
     await page.getByLabel('src フォルダを読み込む').setInputFiles(folder)
     await page.getByRole('button', {name:'変換して ZIP を作成'}).click()
@@ -71,6 +86,7 @@ test('downloads numbered JPEGs from a recursive folder in natural path order', a
 })
 
 test('uses a custom start and PNG output, and clears stale ZIPs when settings change', async ({page}) => {
+  await openZipConverter(page)
   await withFolder(page, async folder => {
     await page.getByLabel('src フォルダを読み込む').setInputFiles(folder)
     await page.getByLabel('開始番号').fill('999')
@@ -87,6 +103,7 @@ test('uses a custom start and PNG output, and clears stale ZIPs when settings ch
 })
 
 test('does not generate a ZIP when no files match or a source image is broken', async ({page}) => {
+  await openZipConverter(page)
   await withFolder(page, async folder => {
     await page.getByLabel('src フォルダを読み込む').setInputFiles(folder)
     await page.getByLabel('入力形式').selectOption('webp')
@@ -107,7 +124,7 @@ test('allows multiple image files when folder input is unavailable', async ({pag
     Reflect.deleteProperty(HTMLInputElement.prototype, 'webkitdirectory')
     Reflect.deleteProperty(File.prototype, 'webkitRelativePath')
   })
-  await page.reload()
+  await openZipConverter(page, '画像をまとめて選択')
   await page.getByLabel('画像をまとめて選択').setInputFiles([
     await pngOf(page, '10.png', 10, 3), await pngOf(page, '2.png', 2, 3)
   ])
